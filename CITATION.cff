@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use or adapt these scripts, please cite the associated article."
+title: "Figure and statistical analysis scripts for Editing a dinoflagellate giant genome illuminates saxitoxin biosynthesis"
+type: software
+version: "1.0.0"
+date-released: 2026-07-20
+license: MIT
+repository-code: "https://github.com/zfchen-sci/dinoflagellate-crispr-figure-code"
+authors:
+  - family-names: Chen
+    given-names: Zhenfan
+preferred-citation:
+  type: article
+  title: "Editing a dinoflagellate giant genome illuminates saxitoxin biosynthesis"
+  year: 2026
+  authors:
+    - family-names: Chen
+      given-names: Zhenfan
+    - family-names: Lin
+      given-names: Zhuoru
+    - family-names: Wang
+      given-names: Jinxiu
+    - family-names: Guo
+      given-names: Chang
+    - family-names: Xu
+      given-names: Chang
+    - family-names: Tang
+      given-names: Wenjiao
+    - family-names: Francoeur
+      given-names: Alexander
+    - family-names: Zhao
+      given-names: Qiyu
+    - family-names: Zhao
+      given-names: Bo
+    - family-names: Li
+      given-names: Qi
+    - family-names: Huang
+      given-names: Yuming
+    - family-names: Kong
+      given-names: Fanzhou
+    - family-names: Zhang
+      given-names: Qingchun
+    - family-names: Yan
+      given-names: Tian
+    - family-names: Lin
+      given-names: Senjie
+    - family-names: Yu
+      given-names: Rencheng
