@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 
 logging.getLogger("fontTools.subset").setLevel(logging.ERROR)
@@ -70,6 +71,47 @@ def significance_label(p: float | None, tiers: int = 4) -> str:
     if p < 0.05:
         return "*"
     return "ns"
+
+
+def games_howell(groups: dict[str, object], alpha: float = 0.05) -> list[dict]:
+    """Return Games-Howell pairwise comparisons for independent groups."""
+    clean = {}
+    for label, raw in groups.items():
+        values = np.asarray(raw, dtype=float)
+        values = values[np.isfinite(values)]
+        if values.size < 2:
+            raise ValueError("Games-Howell comparisons require at least two observations per group.")
+        clean[str(label)] = values
+    labels = list(clean)
+    k = len(labels)
+    results = []
+    for i, first in enumerate(labels):
+        for second in labels[i + 1 :]:
+            a, b = clean[first], clean[second]
+            na, nb = len(a), len(b)
+            va, vb = np.var(a, ddof=1), np.var(b, ddof=1)
+            component_a, component_b = va / na, vb / nb
+            se = np.sqrt(component_a + component_b)
+            difference = float(np.mean(b) - np.mean(a))
+            df = (component_a + component_b) ** 2 / (
+                component_a**2 / (na - 1) + component_b**2 / (nb - 1)
+            )
+            q = np.sqrt(2) * abs(difference) / se
+            p_adjusted = float(stats.studentized_range.sf(q, k, df))
+            critical = float(stats.studentized_range.ppf(1 - alpha, k, df) / np.sqrt(2))
+            half_width = critical * se
+            results.append(
+                {
+                    "group_1": first,
+                    "group_2": second,
+                    "mean_difference": difference,
+                    "df": float(df),
+                    "p_adjusted": p_adjusted,
+                    "ci_low": float(difference - half_width),
+                    "ci_high": float(difference + half_width),
+                }
+            )
+    return results
 
 
 def add_bracket(

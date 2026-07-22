@@ -36,7 +36,7 @@ def plot(source_dir: Path, output_dir: Path) -> None:
             values = tip.loc[tip.tip_size_nm == group, outcome].to_numpy()
             ax.scatter(np.full(values.size, x[i] + offset), values, s=10, c=COLORS["dark"], zorder=3)
         p = stats.ttest_ind(
-            tip.loc[tip.tip_size_nm == 500, outcome], tip.loc[tip.tip_size_nm == 50, outcome], equal_var=True
+            tip.loc[tip.tip_size_nm == 500, outcome], tip.loc[tip.tip_size_nm == 50, outcome], equal_var=False
         ).pvalue
         y = 79 if outcome == "germination_rate" else 88
         add_bracket(ax, x[0] + offset, x[1] + offset, y, significance_label(p, tiers=1), height=2)
@@ -60,7 +60,7 @@ def plot(source_dir: Path, output_dir: Path) -> None:
         p = stats.ttest_ind(
             uvrd.loc[np.isclose(uvrd.uvrd_uM, 0.003), outcome],
             uvrd.loc[np.isclose(uvrd.uvrd_uM, 0.012), outcome],
-            equal_var=True,
+            equal_var=False,
         ).pvalue
         y = 73 if outcome == "germination_rate" else 82
         add_bracket(ax, x[0] + offset, x[1] + offset, y, significance_label(p, tiers=1), height=2)

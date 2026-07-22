@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
+from statsmodels.stats.multitest import multipletests
 
 from common import COLORS, add_bracket, configure_style, panel_label, save_figure, significance_label
 
@@ -101,6 +102,17 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     qbio["transcripts"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
     qbio["log10_transcripts"] = np.log10(qbio.transcripts)
     days = [5, 9, 13, 15]
+    q_raw_p = []
+    for day in days:
+        sub = qbio[qbio.Days == day]
+        q_raw_p.append(
+            stats.ttest_ind(
+                sub.loc[sub.Strain == WT, "log10_transcripts"],
+                sub.loc[sub.Strain == EDITED, "log10_transcripts"],
+                equal_var=False,
+            ).pvalue
+        )
+    q_adjusted_p = multipletests(q_raw_p, method="holm")[1]
     x = np.arange(len(days))
     width = 0.32
     for offset, strain, color in ((-width / 2, WT, COLORS["wt"]), (width / 2, EDITED, COLORS["edited"])):
@@ -113,11 +125,10 @@ def plot(source_dir: Path, output_dir: Path) -> None:
             ax.scatter(x[i] + offset + jitter, vals, s=8, color=COLORS["dark"], zorder=3)
     ymax = max(ax.get_ylim()[1], 310)
     ax.set_ylim(0, ymax)
-    for i, day in enumerate(days):
+    for i, (day, p_adjusted) in enumerate(zip(days, q_adjusted_p)):
         sub = qbio[qbio.Days == day]
-        p = stats.ttest_ind(sub.loc[sub.Strain == WT, "log10_transcripts"], sub.loc[sub.Strain == EDITED, "log10_transcripts"], equal_var=True).pvalue
         y = max(sub.transcripts.max() * 1.12, 35)
-        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(p, tiers=2), height=max(ymax * 0.015, 2))
+        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(float(p_adjusted)), height=max(ymax * 0.015, 2))
     ax.set(xticks=x, xticklabels=days, xlabel="Time (days)", ylabel="sxtA4 transcripts per cell")
     ax.legend(loc="upper right")
     panel_label(ax, "d")
@@ -145,17 +156,31 @@ def plot(source_dir: Path, output_dir: Path) -> None:
         / (toxin["Cell density (cells/ml)"] * toxin["Culture volume collected (mL)"])
     )
     days = sorted(toxin.day.unique())
+    toxin_raw_p = []
+    for day in days:
+        sub = toxin[toxin.day == day]
+        toxin_raw_p.append(
+            stats.ttest_ind(
+                sub.loc[sub.Strain == WT, "fmol_cell"],
+                sub.loc[sub.Strain == EDITED, "fmol_cell"],
+                equal_var=False,
+            ).pvalue
+        )
+    toxin_adjusted_p = multipletests(toxin_raw_p, method="holm")[1]
     x = np.arange(len(days))
     width = 0.34
     for offset, strain, color in ((-width / 2, WT, COLORS["wt"]), (width / 2, EDITED, COLORS["edited"])):
         means = [toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].mean() for day in days]
         sds = [toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].std(ddof=1) for day in days]
         ax.bar(x + offset, means, width, yerr=sds, capsize=1.5, color=color, edgecolor=COLORS["dark"], label=strain)
-    for i, day in enumerate(days):
+        for i, day in enumerate(days):
+            vals = toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].to_numpy()
+            jitter = np.linspace(-0.035, 0.035, len(vals))
+            ax.scatter(x[i] + offset + jitter, vals, s=8, color=COLORS["dark"], zorder=3)
+    for i, (day, p_adjusted) in enumerate(zip(days, toxin_adjusted_p)):
         sub = toxin[toxin.day == day]
-        p = stats.ttest_ind(sub.loc[sub.Strain == WT, "fmol_cell"], sub.loc[sub.Strain == EDITED, "fmol_cell"], equal_var=False).pvalue
         y = max(sub.fmol_cell.max() * 1.08, 0.04)
-        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(p, tiers=2), height=max(ax.get_ylim()[1] * 0.012, 0.015))
+        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(float(p_adjusted)), height=max(ax.get_ylim()[1] * 0.012, 0.015))
     ax.set(xticks=x, xticklabels=days, xlabel="Time (days)", ylabel="Cellular toxin (fmol cell−1)")
     ax.legend(loc="upper right")
     panel_label(ax, "e2")

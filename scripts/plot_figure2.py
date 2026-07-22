@@ -10,7 +10,7 @@ import pandas as pd
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-from common import COLORS, add_bracket, configure_style, panel_label, save_figure, significance_label
+from common import COLORS, add_bracket, configure_style, games_howell, panel_label, save_figure, significance_label
 
 
 def injection_data(path: Path) -> pd.DataFrame:
@@ -98,7 +98,7 @@ def plot(source_dir: Path, output_dir: Path) -> None:
             vals = sub.loc[sub.crRNA == site, outcome].dropna()
             ax.bar(positions[i], vals.mean(), width, yerr=vals.std(ddof=1), capsize=2, color=color, edgecolor=COLORS["dark"])
             ax.scatter(np.full(vals.size, positions[i]), vals, s=8, c=COLORS["dark"], zorder=3)
-        p = stats.ttest_ind(sub.loc[sub.crRNA == "Site1", outcome], sub.loc[sub.crRNA == "Site2", outcome], equal_var=True).pvalue
+        p = stats.ttest_ind(sub.loc[sub.crRNA == "Site1", outcome], sub.loc[sub.crRNA == "Site2", outcome], equal_var=False).pvalue
         add_bracket(ax, positions[0], positions[1], 106 + j * 10, significance_label(p))
     ax.set(xticks=x, xticklabels=["crRNA-site1", "crRNA-site2"], ylabel="Editing recovery (%)", ylim=(0, 143))
     panel_label(ax, "c")
@@ -116,10 +116,17 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     labels = list(site1.lineage.drop_duplicates())
     groups = [site1[site1.lineage == label] for label in labels]
     bar_with_points(ax, labels, groups, metric, plt.cm.Blues(np.linspace(0.25, 0.7, len(labels))), "Editing efficiency (%)", (0, 100))
-    tukey = pairwise_tukeyhsd(site1[metric], site1.lineage)
-    lookup = {(str(a), str(b)): float(p) for (a, b), p in zip(combinations(tukey.groupsunique, 2), tukey.pvalues)}
-    p = lookup[("AC51C6", "AC51D3")]
-    add_bracket(ax, labels.index("AC51C6"), labels.index("AC51D3"), 77, significance_label(p))
+    comparisons = games_howell({label: site1.loc[site1.lineage == label, metric] for label in labels})
+    significant = [row for row in comparisons if row["p_adjusted"] < 0.05]
+    for level, row in enumerate(significant):
+        add_bracket(
+            ax,
+            labels.index(row["group_1"]),
+            labels.index(row["group_2"]),
+            77 + level * 7.0,
+            significance_label(row["p_adjusted"]),
+            height=1.7,
+        )
     ax.tick_params(axis="x", rotation=30)
     panel_label(ax, "e1")
 
@@ -128,10 +135,17 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     labels = list(site2.lineage.drop_duplicates())
     groups = [site2[site2.lineage == label] for label in labels]
     bar_with_points(ax, labels, groups, metric, plt.cm.Oranges(np.linspace(0.2, 0.75, len(labels))), "Editing efficiency (%)", (0, 120))
-    tukey = pairwise_tukeyhsd(site2[metric], site2.lineage)
-    pairs = [(str(a), str(b), float(p)) for (a, b), p in zip(combinations(tukey.groupsunique, 2), tukey.pvalues) if p < 0.05]
-    for level, (a, b, p) in enumerate(pairs):
-        add_bracket(ax, labels.index(a), labels.index(b), 70 + level * 7.0, significance_label(p), height=1.7)
+    comparisons = games_howell({label: site2.loc[site2.lineage == label, metric] for label in labels})
+    significant = [row for row in comparisons if row["p_adjusted"] < 0.05]
+    for level, row in enumerate(significant):
+        add_bracket(
+            ax,
+            labels.index(row["group_1"]),
+            labels.index(row["group_2"]),
+            70 + level * 7.0,
+            significance_label(row["p_adjusted"]),
+            height=1.7,
+        )
     ax.tick_params(axis="x", rotation=30)
     panel_label(ax, "e2")
 

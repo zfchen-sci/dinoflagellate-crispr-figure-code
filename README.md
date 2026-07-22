@@ -58,7 +58,9 @@ The command creates:
 
 - `figures/`, containing SVG, PDF and PNG figure outputs;
 - `results/statistics_results.json`, containing machine-readable results; and
-- `results/statistics_results.xlsx`, containing tabulated statistical results.
+- `results/statistics_results.xlsx`, containing one concise `statistical_tests`
+  worksheet with the tests, sample sizes, multiplicity adjustments, exact P
+  values and figure labels needed for review.
 
 Existing files with the same output names are replaced.
 
@@ -68,6 +70,12 @@ The scripts validate required workbook names, worksheet structures and several
 expected data dimensions before generating outputs. They do not modify the
 source-data workbooks. SVG and PDF are the preferred editable and publication
 formats; PNG files are provided for convenient previewing.
+
+Figure 3 inferential comparisons are restricted to panels d and e. Both panels
+use two-sided Welch t-tests at each time point, with Holm adjustment applied
+separately to the four comparisons in panel d and the eight comparisons in
+panel e. Figure labels are derived from the adjusted P values. Figure 4e is
+descriptive and is not subjected to an additional hypothesis test.
 
 ## Citation
 
