@@ -443,45 +443,6 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     gene_p: list[dict] = []
 
     fed = source_dir / "Source_data_Extended_data_fig.xlsx"
-    ed1b = pd.read_excel(fed, sheet_name="ED_Fig.1b", header=5)
-    required_ed1b = {"log10(sxtA4-copies)", "Ct Value"}
-    if not required_ed1b.issubset(ed1b.columns):
-        raise ValueError("ED_Fig.1b source-data columns are incomplete.")
-    ed1b_means = (
-        ed1b.dropna(subset=list(required_ed1b))
-        .groupby("log10(sxtA4-copies)", as_index=False)["Ct Value"]
-        .mean()
-        .sort_values("log10(sxtA4-copies)")
-    )
-    ed1b_regression = stats.linregress(ed1b_means["log10(sxtA4-copies)"], ed1b_means["Ct Value"])
-    ed1b_n = len(ed1b_means)
-    tests.append(
-        {
-            "figure": "Extended Data Fig. 1",
-            "panel": "b",
-            "comparison": "qPCR standard curve",
-            "outcome": "Ct vs log10(copy number)",
-            "group_1_mean": float(ed1b_regression.slope),
-            "group_1_sd": None,
-            "group_1_n": ed1b_n,
-            "group_2_mean": float(ed1b_regression.intercept),
-            "group_2_sd": None,
-            "group_2_n": None,
-            "test": "Linear regression",
-            "correction": "None",
-            "statistic": float(ed1b_regression.rvalue**2),
-            "df": float(ed1b_n - 2),
-            "p_raw": float(ed1b_regression.pvalue),
-            "p_adjusted": None,
-            "p_used_for_display": float(ed1b_regression.pvalue),
-            "p_formatted": format_p(ed1b_regression.pvalue),
-            "significance": significance_label(ed1b_regression.pvalue),
-            "source_file": fed.name,
-            "source_sheet": "ED_Fig.1b",
-            "notes": "Regression used the mean Ct value at each log10 copy-number level; group_1_mean is the slope and group_2_mean is the intercept.",
-        }
-    )
-
     ed1c = pd.read_excel(fed, sheet_name="ED_Fig.1c", header=2)
     ed1c_bio = ed1c.groupby(["Number of cells", "Samples"], as_index=False)["Ct Value"].mean()
     ed1c_bio["copy_number_per_cell"] = (
@@ -524,7 +485,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         ("Fig. 4", "c", "Fig.4c", "plot_figure4.py", "Welch tests with Holm correction"),
         ("Fig. 4", "d", "Fig.4d", "plot_figure4.py", "DESeq2 gene-level tests"),
         ("Fig. 4", "e", "Fig.4e", "plot_figure4.py", "Descriptive; no additional hypothesis test"),
-        ("Extended Data Fig. 1", "b,c", "ED_Fig.1b; ED_Fig.1c", "plot_extended_data.py", "Regression/descriptive"),
+        ("Extended Data Fig. 1", "b,c", "ED_Fig.1b; ED_Fig.1c", "plot_extended_data.py", "Descriptive; no inferential tests"),
         ("Extended Data Fig. 2", "a,b", "ED_Fig.2a; ED_Fig.2b", "plot_extended_data.py", "Descriptive heat maps"),
         ("Extended Data Fig. 6", "a–e", "ED_Fig.6a–e", "plot_extended_data.py", "PCA/Pearson/descriptive"),
         ("Extended Data Fig. 7", "", "ED_Fig.7", "plot_extended_data.py", "GO enrichment FDR"),
