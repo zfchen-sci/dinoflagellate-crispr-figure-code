@@ -1,195 +1,202 @@
 from __future__ import annotations
 
 import argparse
-import re
+from itertools import combinations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-from common import COLORS, add_bracket, configure_style, panel_label, save_figure, significance_label
-
-
-WT = "Wild-type strain"
-EDITED = "sxtA4-edited strain"
+from common import COLORS, add_bracket, configure_style, games_howell, panel_label, save_figure, significance_label
 
 
-def parse_density(value: object) -> float:
-    text = str(value).replace("×", "x")
-    match = re.search(r"([0-9.]+)\s*x\s*10([⁰¹²³⁴⁵⁶⁷⁸⁹]+)", text)
-    exponent = int(match.group(2).translate(str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")))
-    return float(match.group(1)) * 10**exponent
+def injection_data(path: Path) -> pd.DataFrame:
+    data = pd.read_excel(path, sheet_name="Fig.3f-g_raw", header=21)
+    data = data[data["crRNA"].isin(["Site1", "Site2"])].copy()
+    for label, denominator in {
+        "per_injected": "Injected cells",
+        "per_germinated": "Germinated cells",
+        "per_viable": "Viable cells",
+    }.items():
+        data[label] = 100 * data["Positive cells"] / data[denominator].replace(0, np.nan)
+    return data
+
+
+def bar_with_points(ax, labels, groups, value, colors, ylabel, ylim=None):
+    x = np.arange(len(labels))
+    means = [np.nanmean(group[value]) for group in groups]
+    sds = [np.nanstd(group[value], ddof=1) for group in groups]
+    ax.bar(x, means, yerr=sds, capsize=2, color=colors, edgecolor=COLORS["dark"])
+    for i, group in enumerate(groups):
+        values = group[value].dropna().to_numpy(dtype=float)
+        jitter = np.linspace(-0.07, 0.07, len(values)) if len(values) > 1 else np.array([0.0])
+        ax.scatter(x[i] + jitter, values, s=9, c=COLORS["dark"], zorder=3)
+    ax.set_xticks(x, labels)
+    ax.set_ylabel(ylabel)
+    if ylim:
+        ax.set_ylim(*ylim)
+    return x
+
+
+def cell_recovery_panel(ax: plt.Axes, raw: pd.DataFrame, strategy: str, panel: str) -> None:
+    subset = raw.loc[raw["Injection strategy"] == strategy].copy()
+    doses = [5, 30, 1200]
+    x = np.arange(3)
+    width = 0.34
+    for offset, column, label, color in (
+        (-width / 2, "Germination (% injected)", "Germinated", COLORS["blue"]),
+        (width / 2, "Viable-cell recovery (% injected)", "Viable", COLORS["orange"]),
+    ):
+        groups = [subset.loc[subset["RNP concentration (nM)"] == dose, column].dropna() for dose in doses]
+        means = [group.mean() for group in groups]
+        sds = [group.std(ddof=1) for group in groups]
+        positions = x + offset
+        ax.bar(positions, means, width, yerr=sds, capsize=2, color=color, edgecolor=COLORS["dark"], label=label)
+        for position, group in zip(positions, groups):
+            ax.scatter(np.full(len(group), position), group, s=8, c=COLORS["dark"], zorder=3)
+    display = {"Cytosol": "Cytosolic delivery", "Nuclei": "Nuclear delivery", "UvrD+Cytosol": "UvrD + cytosol", "UvrD+Nuclei": "UvrD + nucleus"}[strategy]
+    ax.set(xticks=x, xticklabels=["5", "30", "1,200"], xlabel="RNP concentration (nM)", ylabel="Recovery (% injected)", ylim=(0, 105), title=display)
+    panel_label(ax, panel)
 
 
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
     source = source_dir / "Source_data_fig3.xlsx"
-    pigment = pd.read_excel(source, sheet_name="Fig.3b", header=2)
-    growth = pd.read_excel(source, sheet_name="Fig.3c", header=1)
-    qpcr = pd.read_excel(source, sheet_name="Fig.3d", header=2)
-    toxin = pd.read_excel(source, sheet_name="Fig. 3e", header=2)
-    toxin = toxin[toxin.Samples.notna()].copy()
+    cell_raw = pd.read_excel(source, sheet_name="Fig.3b-e_raw", header=3)
+    required_cell_columns = {"Injection strategy", "RNP concentration (nM)", "Germination (% injected)", "Viable-cell recovery (% injected)"}
+    if not required_cell_columns.issubset(cell_raw.columns):
+        raise ValueError("Fig. 3b–e source-data columns are incomplete.")
+    raw = injection_data(source)
+    edit = pd.read_excel(source, sheet_name="Fig.3h-j")
+    edit["lineage"] = edit["sample"].str.rsplit("-", n=1).str[0]
+    metric = "corrected_editing_efficiency_pct"
 
-    fig = plt.figure(figsize=(7.2, 7.3), constrained_layout=True)
-    grid = fig.add_gridspec(3, 2, height_ratios=[1.15, 1, 1])
+    fig, axes = plt.subplots(7, 2, figsize=(7.2, 16.0), constrained_layout=True)
+    axes = axes.ravel()
 
-    ax = fig.add_subplot(grid[0, 0])
-    pigment_cols = ["Bcar", "Chlide a", "MgDVP", "Chl c3", "Chl c2", "Viol", "Diad", "Peri", "Chl a"]
-    pigment_colors = ["#D94D7C", "#E99AB3", "#E68C66", "#F0A14A", "#F6C85F", "#FBE6B7", "#93D3D3", "#7FA3C5", "#9BC59B"]
-    pigment["day"] = pigment.Samples.str.extract(r"-D(\d+)-")[0].astype(int)
-    days = sorted(pigment.day.unique())
-    x = np.arange(len(days))
-    for direction, strain in ((1, WT), (-1, EDITED)):
-        bottom = np.zeros(len(days))
-        for column, color in zip(pigment_cols, pigment_colors):
-            values = np.array([pigment.loc[(pigment.Strain == strain) & (pigment.day == day), column].mean() for day in days])
-            ax.bar(x, direction * values, bottom=direction * bottom, color=color, width=0.78, linewidth=0, label=column if direction == 1 else None)
-            bottom += values
-    ax.axhline(0, color=COLORS["dark"], lw=0.7)
-    ax.set(xticks=x, xticklabels=days, xlabel="Time (days)", ylabel="Culture pigment content (µg L−1)")
-    ax.legend(
-        ncol=3,
-        bbox_to_anchor=(0.5, 1.02),
-        loc="lower center",
-        fontsize=5.4,
-        columnspacing=0.8,
-        handletextpad=0.4,
-    )
-    panel_label(ax, "b")
+    for ax, strategy, panel in zip(axes[:4], ["Cytosol", "Nuclei", "UvrD+Cytosol", "UvrD+Nuclei"], ["b", "c", "d", "e"]):
+        cell_recovery_panel(ax, cell_raw, strategy, panel)
+    axes[0].legend(loc="upper left")
 
-    ax2 = ax.twinx()
-    all_pigments = list(pigment.columns[2:27])
-    pigment["total"] = pigment[all_pigments].sum(axis=1)
-    pigment["pg_cell"] = pigment.total * 1e6 / pigment["Cell density (cells/L)"]
-    for strain, color, marker, sign in ((WT, COLORS["dark"], "o", 1), (EDITED, COLORS["edited"], "o", -1)):
-        means = np.array([pigment.loc[(pigment.Strain == strain) & (pigment.day == day), "pg_cell"].mean() for day in days])
-        sds = np.array([pigment.loc[(pigment.Strain == strain) & (pigment.day == day), "pg_cell"].std(ddof=1) for day in days])
-        ax2.errorbar(x, sign * means, yerr=sds, color=color, marker=marker, ms=2.8, capsize=1.5, lw=0.8)
-    ax2.set_ylabel("Cellular pigment content (pg cell−1)")
-    lim = max(abs(v) for v in ax2.get_ylim())
-    ax2.set_ylim(-lim, lim)
-
-    ax = fig.add_subplot(grid[0, 1])
-    growth["density"] = growth["Cell density (cells/L)"].map(parse_density)
-    growth["ln_density"] = np.log(growth.density / 1000)
-    growth = growth[growth.Days.between(5, 23)]
-    daily = growth.groupby(["Strain", "Days"]).ln_density.agg(["mean", "std"]).reset_index()
-    for strain, color in ((WT, COLORS["wt"]), (EDITED, COLORS["edited"])):
-        sub = daily[daily.Strain == strain]
-        ax.errorbar(sub.Days, sub["mean"], yerr=sub["std"], color=color, marker="o", ms=2.8, capsize=1.5, lw=0.8, label=strain)
-        fit = stats.linregress(sub.Days, sub["mean"])
-        xx = np.linspace(5, 23, 100)
-        ax.plot(xx, fit.intercept + fit.slope * xx, color=color, ls="--", lw=0.8)
-        ax.text(
-            0.98,
-            0.92 if strain == EDITED else 0.18,
-            f"y = {fit.slope:.2f}x + {fit.intercept:.2f}\n$R^2$ = {fit.rvalue**2:.2f}",
-            color=color,
-            transform=ax.transAxes,
-            ha="right",
-            va="top",
-        )
-    ax.set(xlabel="Time (days)", ylabel="ln(cell density per mL)")
+    ax = axes[4]
+    subset = raw[(raw["crRNA"] == "Site2") & (raw["Injection strategy"] == "UvrD+Nuclei")]
+    doses = [5, 30, 1200]
+    x = np.arange(3)
+    width = 0.24
+    outcomes = [
+        ("per_injected", "per injected", "#575B60"),
+        ("per_germinated", "per germinated", "#5C8BC9"),
+        ("per_viable", "per viable", "#E9A15E"),
+    ]
+    for j, (outcome, label, color) in enumerate(outcomes):
+        positions = x + (j - 1) * width
+        groups = [subset.loc[subset["RNP concentration (nM)"] == dose, outcome].dropna() for dose in doses]
+        ax.bar(positions, [group.mean() for group in groups], width, yerr=[group.std(ddof=1) for group in groups], capsize=2, color=color, edgecolor=COLORS["dark"], label=label)
+        for position, group in zip(positions, groups):
+            ax.scatter(np.full(len(group), position), group, s=8, c=COLORS["dark"], zorder=3)
+    tukey = pairwise_tukeyhsd(subset["per_viable"], subset["RNP concentration (nM)"])
+    for level, ((g1, g2), p_value) in enumerate(zip(combinations(tukey.groupsunique, 2), tukey.pvalues)):
+        add_bracket(ax, x[doses.index(int(g1))] + width, x[doses.index(int(g2))] + width, 78 + level * 8, significance_label(float(p_value)))
+    ax.set(xticks=x, xticklabels=["5", "30", "1,200"], xlabel="RNP concentration (nM)", ylabel="Edited-lineage recovery (%)", ylim=(0, 108))
     ax.legend(loc="upper left")
-    panel_label(ax, "c")
+    panel_label(ax, "f")
 
-    ax = fig.add_subplot(grid[1, :])
-    qbio = qpcr.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
-    qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
-    qbio["transcripts"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
-    qbio["log10_transcripts"] = np.log10(qbio.transcripts)
-    days = [5, 9, 13, 15]
-    q_raw_p = []
-    for day in days:
-        sub = qbio[qbio.Days == day]
-        q_raw_p.append(
-            stats.ttest_ind(
-                sub.loc[sub.Strain == WT, "log10_transcripts"],
-                sub.loc[sub.Strain == EDITED, "log10_transcripts"],
-                equal_var=False,
-            ).pvalue
-        )
-    q_adjusted_p = multipletests(q_raw_p, method="holm")[1]
-    x = np.arange(len(days))
-    width = 0.32
-    for offset, strain, color in ((-width / 2, WT, COLORS["wt"]), (width / 2, EDITED, COLORS["edited"])):
-        means = [qbio.loc[(qbio.Strain == strain) & (qbio.Days == day), "transcripts"].mean() for day in days]
-        sds = [qbio.loc[(qbio.Strain == strain) & (qbio.Days == day), "transcripts"].std(ddof=1) for day in days]
-        ax.bar(x + offset, means, width, yerr=sds, capsize=2, color=color, edgecolor=COLORS["dark"], label=strain)
-        for i, day in enumerate(days):
-            vals = qbio.loc[(qbio.Strain == strain) & (qbio.Days == day), "transcripts"].to_numpy()
-            jitter = np.linspace(-0.04, 0.04, len(vals))
-            ax.scatter(x[i] + offset + jitter, vals, s=8, color=COLORS["dark"], zorder=3)
-    ymax = max(ax.get_ylim()[1], 310)
-    ax.set_ylim(0, ymax)
-    for i, (day, p_adjusted) in enumerate(zip(days, q_adjusted_p)):
-        sub = qbio[qbio.Days == day]
-        y = max(sub.transcripts.max() * 1.12, 35)
-        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(float(p_adjusted)), height=max(ymax * 0.015, 2))
-    ax.set(xticks=x, xticklabels=days, xlabel="Time (days)", ylabel="sxtA4 transcripts per cell")
-    ax.legend(loc="upper right")
-    panel_label(ax, "d")
+    ax = axes[5]
+    subset = raw[(raw["Injection strategy"] == "UvrD+Nuclei") & (raw["RNP concentration (nM)"] == 1200)]
+    x = np.arange(2)
+    for j, (outcome, label, color) in enumerate(outcomes):
+        positions = x + (j - 1) * width
+        for i, site in enumerate(("Site1", "Site2")):
+            values = subset.loc[subset["crRNA"] == site, outcome].dropna()
+            ax.bar(positions[i], values.mean(), width, yerr=values.std(ddof=1), capsize=2, color=color, edgecolor=COLORS["dark"], label=label if i == 0 else None)
+            ax.scatter(np.full(len(values), positions[i]), values, s=8, c=COLORS["dark"], zorder=3)
+        p_value = stats.ttest_ind(subset.loc[subset["crRNA"] == "Site1", outcome], subset.loc[subset["crRNA"] == "Site2", outcome], equal_var=False).pvalue
+        add_bracket(ax, positions[0], positions[1], 106 + j * 10, significance_label(p_value))
+    ax.set(xticks=x, xticklabels=["crRNA-site1", "crRNA-site2"], ylabel="Edited-lineage recovery (%)", ylim=(0, 143))
+    ax.legend(loc="upper left")
+    panel_label(ax, "g")
 
-    ax = fig.add_subplot(grid[2, 0])
-    congeners = ["GTX1", "GTX4", "GTX2", "GTX3", "STX", "NEO"]
-    colors = ["#F3C64E", "#1EB3D7", "#9AB7CE", "#79221E", "#F0A188", "#C8102E"]
-    for xpos, strain in enumerate((WT, EDITED)):
-        totals = toxin.loc[toxin.Strain == strain, congeners].sum()
-        ax.pie(totals, colors=colors, radius=0.42, center=(xpos, 0), wedgeprops={"edgecolor": "white", "linewidth": 0.4})
-    ax.set_xlim(-0.55, 1.55)
-    ax.set_ylim(-0.55, 0.55)
-    ax.set_aspect("equal")
-    ax.set_xticks([0, 1], ["Wild type", "sxtA4 edited"])
-    ax.legend(congeners, ncol=2, bbox_to_anchor=(0.5, 1.02), loc="lower center")
-    panel_label(ax, "e1")
+    ax = axes[6]
+    lineage = edit.groupby(["Target_site", "lineage"], as_index=False)[metric].mean()
+    groups = [lineage[lineage["Target_site"] == site] for site in ("crRNA_site1", "crRNA_site2")]
+    bar_with_points(ax, ["crRNA-site1", "crRNA-site2"], groups, metric, [COLORS["blue"], COLORS["orange"]], "Copy-level editing (%)", (0, 100))
+    result = stats.ttest_ind(groups[0][metric], groups[1][metric], equal_var=False)
+    add_bracket(ax, 0, 1, 75, significance_label(result.pvalue))
+    panel_label(ax, "h")
 
-    ax = fig.add_subplot(grid[2, 1])
-    toxin["day"] = toxin.Samples.str.extract(r"-(?:91|54)-(\d+)-")[0].astype(int)
-    toxin["fmol_cell"] = (
-        toxin.Total
-        * toxin["LC-MS/MS extract volume (mL)"]
-        * toxin["Dilution factor"]
-        * 1e6
-        / (toxin["Cell density (cells/ml)"] * toxin["Culture volume collected (mL)"])
-    )
-    days = sorted(toxin.day.unique())
-    toxin_raw_p = []
-    for day in days:
-        sub = toxin[toxin.day == day]
-        toxin_raw_p.append(
-            stats.ttest_ind(
-                sub.loc[sub.Strain == WT, "fmol_cell"],
-                sub.loc[sub.Strain == EDITED, "fmol_cell"],
-                equal_var=False,
-            ).pvalue
-        )
-    toxin_adjusted_p = multipletests(toxin_raw_p, method="holm")[1]
-    x = np.arange(len(days))
-    width = 0.34
-    for offset, strain, color in ((-width / 2, WT, COLORS["wt"]), (width / 2, EDITED, COLORS["edited"])):
-        means = [toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].mean() for day in days]
-        sds = [toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].std(ddof=1) for day in days]
-        ax.bar(x + offset, means, width, yerr=sds, capsize=1.5, color=color, edgecolor=COLORS["dark"], label=strain)
-        for i, day in enumerate(days):
-            vals = toxin.loc[(toxin.Strain == strain) & (toxin.day == day), "fmol_cell"].to_numpy()
-            jitter = np.linspace(-0.035, 0.035, len(vals))
-            ax.scatter(x[i] + offset + jitter, vals, s=8, color=COLORS["dark"], zorder=3)
-    for i, (day, p_adjusted) in enumerate(zip(days, toxin_adjusted_p)):
-        sub = toxin[toxin.day == day]
-        y = max(sub.fmol_cell.max() * 1.08, 0.04)
-        add_bracket(ax, x[i] - width / 2, x[i] + width / 2, y, significance_label(float(p_adjusted)), height=max(ax.get_ylim()[1] * 0.012, 0.015))
-    ax.set(xticks=x, xticklabels=days, xlabel="Time (days)", ylabel="Cellular toxin (fmol cell−1)")
-    ax.legend(loc="upper right")
-    panel_label(ax, "e2")
+    for axis_index, site, cmap in ((7, "crRNA_site1", plt.cm.Blues), (8, "crRNA_site2", plt.cm.Oranges)):
+        ax = axes[axis_index]
+        site_data = edit[edit["Target_site"] == site]
+        labels = list(site_data["lineage"].drop_duplicates())
+        groups = [site_data[site_data["lineage"] == label] for label in labels]
+        bar_with_points(ax, labels, groups, metric, cmap(np.linspace(0.25, 0.75, len(labels))), "Copy-level editing (%)", (0, 110))
+        comparisons_result = games_howell({label: site_data.loc[site_data["lineage"] == label, metric] for label in labels})
+        for level, comparison in enumerate(row for row in comparisons_result if row["p_adjusted"] < 0.05):
+            add_bracket(ax, labels.index(comparison["group_1"]), labels.index(comparison["group_2"]), 77 + level * 7, significance_label(comparison["p_adjusted"]), height=1.7)
+        ax.tick_params(axis="x", rotation=30)
+        if axis_index == 7:
+            panel_label(ax, "i")
+
+    ax = axes[9]
+    sequence = edit.groupby(["Target_site", "lineage"])[["normalized_wt_pct", "normalized_mutant_like_pct", "normalized_mutant_pct"]].mean().reset_index()
+    labels = sequence["lineage"].tolist()
+    x = np.arange(len(labels))
+    bottom = np.zeros(len(sequence))
+    for column, label, color in (
+        ("normalized_mutant_pct", "Mutant", "#638CB6"),
+        ("normalized_mutant_like_pct", "Mutant-like", "#D49A64"),
+        ("normalized_wt_pct", "WT", "#D8D4CB"),
+    ):
+        ax.bar(x, sequence[column], bottom=bottom, color=color, edgecolor="white", linewidth=0.4, label=label)
+        bottom += sequence[column].to_numpy()
+    ax.axvline(4.5, color="#D0D0D0", lw=0.7)
+    ax.set(xticks=x, xticklabels=labels, ylabel="Normalized sequence type (%)", ylim=(0, 100))
+    ax.tick_params(axis="x", rotation=35)
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    panel_label(ax, "j")
+
+    ax = axes[10]
+    repair = pd.read_excel(source, sheet_name="Fig.3k")
+    pivot = repair.pivot(index="Site", columns="repair_type", values="percent_of_mutant_reads").fillna(0).reindex(["site1", "site2"])
+    bottom = np.zeros(len(pivot))
+    for label, color in (("NHEJ", "#55A9D8"), ("MMEJ", "#E4A300"), ("Other", "#BABABA")):
+        values = pivot[label] if label in pivot else np.zeros(len(pivot))
+        ax.bar(np.arange(len(pivot)), values, bottom=bottom, color=color, edgecolor=COLORS["dark"], linewidth=0.5, label=label)
+        bottom += np.asarray(values)
+    ax.set(xticks=[0, 1], xticklabels=["crRNA-site1", "crRNA-site2"], ylabel="Junction class (%)", ylim=(0, 100))
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    panel_label(ax, "k")
+
+    ax = axes[11]
+    candidates = pd.read_excel(source, sheet_name="Fig.3l")
+    ax.bar(candidates["Category"], candidates["candidate_items_n"], color=["#58A9D7", "#E4A300", "#13A47A"], edgecolor=COLORS["dark"])
+    ax.set_ylabel("Annotated candidate proteins (n)")
+    ax.tick_params(axis="x", rotation=20)
+    panel_label(ax, "l")
+
+    ax = axes[12]
+    motif = pd.read_excel(source, sheet_name="Fig.3m")
+    motif_pivot = motif.pivot(index=["Site", "sample"], columns="motif_length_bp", values="percent_of_sample_mutant_reads").fillna(0).reset_index()
+    x = np.arange(len(motif_pivot))
+    bottom = np.zeros(len(motif_pivot))
+    for length, color in ((2, "#1079A9"), (3, "#E2A400"), (4, "#149C73")):
+        ax.bar(x, motif_pivot[length], bottom=bottom, color=color, width=0.82, label=f"{length} bp")
+        bottom += motif_pivot[length].to_numpy()
+    ax.axvline(int((motif_pivot["Site"] == "site1").sum()) - 0.5, color="#BFBFBF", lw=0.7)
+    ax.set(xticks=x, xticklabels=motif_pivot["sample"], ylabel="Mutant reads with microhomology (%)")
+    ax.tick_params(axis="x", rotation=90, labelsize=5)
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    panel_label(ax, "m")
+    axes[13].axis("off")
 
     save_figure(fig, output_dir, "Figure3_data_panels")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Recreate data-driven panels for current Figure 3.")
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

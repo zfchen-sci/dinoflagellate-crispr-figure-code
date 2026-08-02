@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from itertools import combinations
 from pathlib import Path
 
@@ -88,7 +87,7 @@ def add_holm(rows: list[dict], indices: list[int]) -> None:
 
 
 def parse_injection_data(path: Path) -> pd.DataFrame:
-    df = pd.read_excel(path, sheet_name="Injection_data", header=21)
+    df = pd.read_excel(path, sheet_name="Fig.3f-g_raw", header=21)
     df = df[df["crRNA"].isin(["Site1", "Site2"])].copy()
     for label, denominator in {
         "per_injected": "Injected cells",
@@ -99,65 +98,56 @@ def parse_injection_data(path: Path) -> pd.DataFrame:
     return df
 
 
-def parse_growth_density(value: object) -> float:
-    text = str(value).replace("×", "x")
-    match = re.search(r"([0-9.]+)\s*x\s*10([⁰¹²³⁴⁵⁶⁷⁸⁹]+)", text)
-    if not match:
-        raise ValueError(f"Unrecognized cell-density value: {value}")
-    exponent = int(match.group(2).translate(str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")))
-    return float(match.group(1)) * 10**exponent
-
-
 def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     tests: list[dict] = []
     summaries: list[dict] = []
     checks: list[dict] = []
 
-    f1 = source_dir / "Source_data_fig1.xlsx"
-    d1 = pd.read_excel(f1, sheet_name="Fig.1d")
+    f2 = source_dir / "Source_data_fig2.xlsx"
+    d2 = pd.read_excel(f2, sheet_name="Fig.2d")
     for outcome in ("germination_rate", "viability_rate"):
         tests.append(
             t_row(
-                "Fig. 1",
+                "Fig. 2",
                 "d",
                 "500-nm tip vs 50-nm tip",
                 outcome,
-                d1.loc[d1.tip_size_nm == 500, outcome],
-                d1.loc[d1.tip_size_nm == 50, outcome],
+                d2.loc[d2.tip_size_nm == 500, outcome],
+                d2.loc[d2.tip_size_nm == 50, outcome],
                 "Two-tailed Welch t-test",
                 False,
-                f1.name,
-                "Fig.1d",
+                f2.name,
+                "Fig.2d",
                 tiers=1,
             )
         )
-    d1f = pd.read_excel(f1, sheet_name="Fig.1f")
+    d2f = pd.read_excel(f2, sheet_name="Fig.2f")
     for outcome in ("germination_rate", "viability_rate"):
         tests.append(
             t_row(
-                "Fig. 1",
+                "Fig. 2",
                 "f",
                 "0.003 µM vs 0.012 µM UvrD",
                 outcome,
-                d1f.loc[np.isclose(d1f.uvrd_uM, 0.003), outcome],
-                d1f.loc[np.isclose(d1f.uvrd_uM, 0.012), outcome],
+                d2f.loc[np.isclose(d2f.uvrd_uM, 0.003), outcome],
+                d2f.loc[np.isclose(d2f.uvrd_uM, 0.012), outcome],
                 "Two-tailed Welch t-test",
                 False,
-                f1.name,
-                "Fig.1f",
+                f2.name,
+                "Fig.2f",
                 tiers=1,
             )
         )
 
-    f2 = source_dir / "Source_data_fig2.xlsx"
-    inj = parse_injection_data(f2)
+    f3 = source_dir / "Source_data_fig3.xlsx"
+    inj = parse_injection_data(f3)
     b = inj[(inj.crRNA == "Site2") & (inj["Injection strategy"] == "UvrD+Nuclei")]
     groups = [b.loc[b["RNP concentration (nM)"] == dose, "per_viable"].dropna() for dose in (5, 30, 1200)]
     omnibus = stats.f_oneway(*groups)
     tests.append(
         {
-            "figure": "Fig. 2",
-            "panel": "b",
+            "figure": "Fig. 3",
+            "panel": "f",
             "comparison": "5 vs 30 vs 1,200 nM RNP",
             "outcome": "editing recovery per viable cell",
             "group_1_mean": None,
@@ -175,8 +165,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             "p_used_for_display": float(omnibus.pvalue),
             "p_formatted": format_p(float(omnibus.pvalue)),
             "significance": significance_label(float(omnibus.pvalue)),
-            "source_file": f2.name,
-            "source_sheet": "Injection_data",
+            "source_file": f3.name,
+            "source_sheet": "Fig.3f-g_raw",
             "notes": "Omnibus test; the figure displays Tukey pairwise results.",
         }
     )
@@ -186,8 +176,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     ):
         tests.append(
             {
-                "figure": "Fig. 2",
-                "panel": "b",
+                "figure": "Fig. 3",
+                "panel": "f",
                 "comparison": f"{g1:g} vs {g2:g} nM RNP",
                 "outcome": "editing recovery per viable cell",
                 "group_1_mean": float(b.loc[b["RNP concentration (nM)"] == g1, "per_viable"].mean()),
@@ -205,8 +195,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 "p_used_for_display": float(p_adj),
                 "p_formatted": format_p(float(p_adj)),
                 "significance": significance_label(float(p_adj)),
-                "source_file": f2.name,
-                "source_sheet": "Injection_data",
+                "source_file": f3.name,
+                "source_sheet": "Fig.3f-g_raw",
                 "notes": f"95% CI for mean difference: {ci[0]:.4f} to {ci[1]:.4f}.",
             }
         )
@@ -215,35 +205,35 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     for outcome in ("per_injected", "per_germinated", "per_viable"):
         tests.append(
             t_row(
-                "Fig. 2",
-                "c",
+                "Fig. 3",
+                "g",
                 "crRNA-site1 vs crRNA-site2",
                 outcome,
                 c.loc[c.crRNA == "Site1", outcome],
                 c.loc[c.crRNA == "Site2", outcome],
                 "Two-tailed Welch t-test",
                 False,
-                f2.name,
-                "Injection_data",
+                f3.name,
+                "Fig.3f-g_raw",
             )
         )
 
-    edit = pd.read_excel(f2, sheet_name="Fig.2d-f")
+    edit = pd.read_excel(f3, sheet_name="Fig.3h-j")
     edit["lineage"] = edit["sample"].str.rsplit("-", n=1).str[0]
     metric = "corrected_editing_efficiency_pct"
     lineage = edit.groupby(["Target_site", "lineage"], as_index=False)[metric].mean()
     tests.append(
         t_row(
-            "Fig. 2",
-            "d",
+            "Fig. 3",
+            "h",
             "crRNA-site1 vs crRNA-site2",
             "mean corrected editing efficiency per lineage",
             lineage.loc[lineage.Target_site == "crRNA_site1", metric],
             lineage.loc[lineage.Target_site == "crRNA_site2", metric],
             "Two-tailed Welch t-test",
             False,
-            f2.name,
-            "Fig.2d-f",
+            f3.name,
+            "Fig.3h-j",
             notes="Lineage means are the independent observations; each mean summarizes three sequencing measurements.",
         )
     )
@@ -255,8 +245,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         omnibus = anova_oneway(tuple(grouped.values()), use_var="unequal", welch_correction=True)
         tests.append(
             {
-                "figure": "Fig. 2",
-                "panel": "e",
+                "figure": "Fig. 3",
+                "panel": "i",
                 "comparison": f"All lineages within {site.replace('_', '-')}",
                 "outcome": "corrected editing efficiency",
                 "group_1_mean": None,
@@ -274,8 +264,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 "p_used_for_display": float(omnibus.pvalue),
                 "p_formatted": format_p(float(omnibus.pvalue)),
                 "significance": significance_label(float(omnibus.pvalue)),
-                "source_file": f2.name,
-                "source_sheet": "Fig.2d-f",
+                "source_file": f3.name,
+                "source_sheet": "Fig.3h-j",
                 "notes": "Independent biological replicates; variances are not assumed to be equal.",
             }
         )
@@ -284,8 +274,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             p_adj = comparison["p_adjusted"]
             tests.append(
                 {
-                    "figure": "Fig. 2",
-                    "panel": "e",
+                    "figure": "Fig. 3",
+                    "panel": "i",
                     "comparison": f"{g1} vs {g2}",
                     "outcome": "corrected editing efficiency",
                     "group_1_mean": float(sub.loc[sub.lineage == g1, metric].mean()),
@@ -303,26 +293,19 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                     "p_used_for_display": float(p_adj),
                     "p_formatted": format_p(float(p_adj)),
                     "significance": significance_label(float(p_adj)),
-                    "source_file": f2.name,
-                    "source_sheet": "Fig.2d-f",
+                    "source_file": f3.name,
+                    "source_sheet": "Fig.3h-j",
                     "notes": (
                         "Independent biological replicates; 95% CI for group 2 minus group 1: "
                         f"{comparison['ci_low']:.4f} to {comparison['ci_high']:.4f}."
                     ),
                 }
             )
-    checks.append(
-        {
-            "severity": "High",
-            "location": "Fig. 2b,e statistical annotations and Methods",
-            "issue": "The current Methods does not distinguish the multiple-group procedures used for Fig. 2b and Fig. 2e.",
-            "resolution_in_scripts": "Fig. 2b uses one-way ANOVA with Tukey HSD; Fig. 2e uses Welch ANOVA with Games-Howell pairwise tests for independent biological replicates with unequal variances.",
-            "submission_action": "State both procedures in the statistical analysis subsection and the Fig. 2 legend.",
-        }
-    )
-
-    f3 = source_dir / "Source_data_fig3.xlsx"
-    q = pd.read_excel(f3, sheet_name="Fig.3d", header=2)
+    f4 = source_dir / "Source_data_fig4.xlsx"
+    q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
+    expected_description = np.where(q.Samples.str.startswith("91-"), WT, EDITED)
+    if not np.array_equal(q["Description"].to_numpy(), expected_description):
+        raise ValueError("Fig.4d strain descriptions must match sample prefixes: 91 = wild type and 54 = edited.")
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
     qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
     qbio["transcripts_per_cell"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
@@ -332,7 +315,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         fig3d_indices.append(len(tests))
         tests.append(
             t_row(
-                "Fig. 3",
+                "Fig. 4",
                 "d",
                 f"WT vs edited at day {day}",
                 "log10(sxtA4 transcripts per cell)",
@@ -340,26 +323,19 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 sub.loc[sub.Strain == EDITED, "log10_transcripts_per_cell"],
                 "Two-tailed Welch t-test",
                 False,
-                f3.name,
-                "Fig.3d",
+                f4.name,
+                "Fig.4d",
                 notes="Technical Ct replicates were averaged within each biological sample before conversion; the test uses log10 abundance and the figure displays untransformed values.",
             )
         )
     add_holm(tests, fig3d_indices)
     for i in fig3d_indices:
-        tests[i]["notes"] += " Holm family: the four time-point comparisons in Fig. 3d."
+        tests[i]["notes"] += " Holm family: the four time-point comparisons in Fig. 4d."
     checks.extend(
         [
             {
-                "severity": "High",
-                "location": "Source_data_fig3.xlsx / Fig.3d",
-                "issue": "The Description column assigns both 54 and 91 samples to the same strain at a given day.",
-                "resolution_in_scripts": "Strain is recovered from the stable sample prefix: 91 = wild type; 54 = edited.",
-                "submission_action": "Correct the source-data Description column before submission.",
-            },
-            {
                 "severity": "Medium",
-                "location": "Methods / Fig. 3d",
+                "location": "Methods / Fig. 4d",
                 "issue": "The displayed significance is reproduced by testing log10-transformed abundance, but the current Methods does not state this transformation.",
                 "resolution_in_scripts": "Biological-sample abundances are log10 transformed for the t-test; bars remain on the original scale.",
                 "submission_action": "State the transformation explicitly in Methods and the figure legend.",
@@ -367,7 +343,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         ]
     )
 
-    toxin = pd.read_excel(f3, sheet_name="Fig. 3e", header=2)
+    toxin = pd.read_excel(f4, sheet_name="Fig.4e", header=2)
     toxin = toxin[toxin.Samples.notna()].copy()
     toxin["day"] = toxin.Samples.str.extract(r"-(?:91|54)-(\d+)-")[0].astype(int)
     toxin["cellular_toxin_fmol_cell"] = (
@@ -382,7 +358,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         fig3e_indices.append(len(tests))
         tests.append(
             t_row(
-                "Fig. 3",
+                "Fig. 4",
                 "e",
                 f"WT vs edited at day {day}",
                 "total cellular toxin (fmol cell−1)",
@@ -390,23 +366,23 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 sub.loc[sub.Strain == EDITED, "cellular_toxin_fmol_cell"],
                 "Two-tailed Welch t-test",
                 False,
-                f3.name,
-                "Fig. 3e",
+                f4.name,
+                "Fig.4e",
                 notes="Independent biological replicates; the test uses untransformed cellular-toxin values.",
             )
         )
     add_holm(tests, fig3e_indices)
     for i in fig3e_indices:
-        tests[i]["notes"] += " Holm family: the eight time-point comparisons in Fig. 3e."
+        tests[i]["notes"] += " Holm family: the eight time-point comparisons in Fig. 4e."
 
-    f4 = source_dir / "Source_data_fig4.xlsx"
-    sxta = pd.read_excel(f4, sheet_name="Fig.4b")
+    f5 = source_dir / "Source_data_fig5.xlsx"
+    sxta = pd.read_excel(f5, sheet_name="Fig.5b")
     fig4b_indices = []
     for day, sub in sxta.groupby("day"):
         fig4b_indices.append(len(tests))
         tests.append(
             t_row(
-                "Fig. 4",
+                "Fig. 5",
                 "b",
                 f"WT vs edited at day {day}",
                 "sxtA expression (FPKM)",
@@ -414,19 +390,19 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 sub.loc[sub.group == EDITED, "fpkm"],
                 "Two-tailed Welch t-test",
                 False,
-                f4.name,
-                "Fig.4b",
+                f5.name,
+                "Fig.5b",
             )
         )
     add_holm(tests, fig4b_indices)
 
-    pst = pd.read_excel(f4, sheet_name="Fig.4c")
+    pst = pd.read_excel(f5, sheet_name="Fig.5c")
     fig4c_indices = []
     for gene, sub in pst.groupby("pst_gene", sort=False):
         fig4c_indices.append(len(tests))
         tests.append(
             t_row(
-                "Fig. 4",
+                "Fig. 5",
                 "c",
                 f"WT vs edited for {gene}",
                 "FPKM pooled across four sampled days",
@@ -434,8 +410,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 sub.loc[sub.group == EDITED, "fpkm"],
                 "Two-tailed Welch t-test",
                 False,
-                f4.name,
-                "Fig.4c",
+                f5.name,
+                "Fig.5c",
             )
         )
     add_holm(tests, fig4c_indices)
@@ -471,21 +447,21 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     ].to_dict(orient="records")
 
     panel_map = [
-        ("Fig. 1", "d", "Fig.1d", "plot_figure1.py", "Welch t-tests"),
-        ("Fig. 1", "f", "Fig.1f", "plot_figure1.py", "Welch t-tests"),
-        ("Fig. 1", "g,h", "Fig.1g_base_comp; Fig.1g_h_SNPs", "plot_figure1.py", "Descriptive"),
-        ("Fig. 2", "a–c", "Injection_data; Fig.2a–c", "plot_figure2.py", "ANOVA/Tukey and Welch t-tests"),
-        ("Fig. 2", "d–f", "Fig.2d-f", "plot_figure2.py", "Welch t-test; Welch ANOVA/Games-Howell"),
-        ("Fig. 2", "g–i", "Fig.2g–i", "plot_figure2.py", "Descriptive"),
-        ("Fig. 3", "b,c", "Fig.3b; Fig.3c", "plot_figure3.py", "Descriptive; no inferential comparisons"),
-        ("Fig. 3", "d", "Fig.3d", "plot_figure3.py", "Log10-scale Welch tests with Holm correction"),
-        ("Fig. 3", "e", "Fig. 3e", "plot_figure3.py", "Welch tests with Holm correction"),
-        ("Fig. 4", "a", "Fig.4a", "plot_figure4.py", "Descriptive"),
-        ("Fig. 4", "b", "Fig.4b", "plot_figure4.py", "Welch tests with Holm correction"),
-        ("Fig. 4", "c", "Fig.4c", "plot_figure4.py", "Welch tests with Holm correction"),
-        ("Fig. 4", "d", "Fig.4d", "plot_figure4.py", "DESeq2 gene-level tests"),
-        ("Fig. 4", "e", "Fig.4e", "plot_figure4.py", "Descriptive; no additional hypothesis test"),
-        ("Extended Data Fig. 1", "b,c", "ED_Fig.1b; ED_Fig.1c", "plot_extended_data.py", "Descriptive; no inferential tests"),
+        ("Fig. 1", "a–c,e,f", "Fig.1a-b_base_comp; Fig.1a-b_SNPs; Fig.1c_sequences; Fig.1e_metrics; Fig.1f_pair_prob", "plot_figure1.py", "Computational predictions or descriptive source data"),
+        ("Fig. 2", "d,f", "Fig.2d; Fig.2f", "plot_figure2.py", "Welch t-tests"),
+        ("Fig. 3", "a–e", "Fig.3a_design; Fig.3b-e_raw; Fig.3b-e_summary", "plot_figure3.py", "Descriptive; no inferential tests"),
+        ("Fig. 3", "f,g", "Fig.3f-g_raw; Fig.3f; Fig.3g", "plot_figure3.py", "ANOVA/Tukey and Welch t-tests"),
+        ("Fig. 3", "h–j", "Fig.3h-j", "plot_figure3.py", "Welch t-test; Welch ANOVA/Games-Howell; descriptive composition"),
+        ("Fig. 3", "k–m", "Fig.3k; Fig.3l; Fig.3m", "plot_figure3.py", "Descriptive"),
+        ("Fig. 4", "b,c", "Fig.4b; Fig.4c", "plot_figure4.py", "Descriptive; no inferential comparisons"),
+        ("Fig. 4", "d", "Fig.4d", "plot_figure4.py", "Log10-scale Welch tests with Holm correction"),
+        ("Fig. 4", "e", "Fig.4e", "plot_figure4.py", "Welch tests with Holm correction"),
+        ("Fig. 5", "a", "Fig.5a", "plot_figure5.py", "Descriptive"),
+        ("Fig. 5", "b", "Fig.5b", "plot_figure5.py", "Welch tests with Holm correction"),
+        ("Fig. 5", "c", "Fig.5c", "plot_figure5.py", "Welch tests with Holm correction"),
+        ("Fig. 5", "d", "Fig.5d", "plot_figure5.py", "DESeq2 gene-level tests"),
+        ("Fig. 5", "e", "Fig.5e", "plot_figure5.py", "Descriptive; no additional hypothesis test"),
+        ("Extended Data Fig. 1", "b–g", "ED_Fig.1b; ED_Fig.1c; ED_Fig.1d; ED_Fig.1e; ED_Fig.1f; ED_Fig.1g", "plot_extended_data.py", "Descriptive or computational predictions"),
         ("Extended Data Fig. 2", "a,b", "ED_Fig.2a; ED_Fig.2b", "plot_extended_data.py", "Descriptive heat maps"),
         ("Extended Data Fig. 6", "a–e", "ED_Fig.6a–e", "plot_extended_data.py", "PCA/Pearson/descriptive"),
         ("Extended Data Fig. 7", "", "ED_Fig.7", "plot_extended_data.py", "GO enrichment FDR"),
@@ -508,7 +484,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         "panel_map": panel_rows,
         "tests": tests,
         "summaries": summaries,
-        "fig4e_gene_p": gene_p,
+        "fig5e_gene_p": gene_p,
         "ed7_go_fdr": ed7_rows,
         "checks": checks,
     }
@@ -619,7 +595,7 @@ def write_results(source_dir: Path, output_dir: Path) -> tuple[Path, Path]:
     excel_path = output_dir / "statistics_results.xlsx"
     json_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     write_excel_results(result, excel_path)
-    for name in ("checks.csv", "ed7_go_fdr.csv", "fig4e_gene_p.csv", "panel_map.csv", "summaries.csv", "tests.csv"):
+    for name in ("checks.csv", "ed7_go_fdr.csv", "fig4e_gene_p.csv", "fig5e_gene_p.csv", "panel_map.csv", "summaries.csv", "tests.csv"):
         path = output_dir / name
         if path.exists():
             path.unlink()

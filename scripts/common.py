@@ -39,6 +39,7 @@ def configure_style() -> None:
             "legend.fontsize": 6.5,
             "axes.spines.top": False,
             "axes.spines.right": False,
+            "axes.grid": False,
             "axes.linewidth": 0.7,
             "xtick.major.width": 0.7,
             "ytick.major.width": 0.7,

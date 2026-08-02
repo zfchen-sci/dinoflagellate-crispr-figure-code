@@ -87,9 +87,73 @@ def plot_ed1c(source: Path, output_dir: Path) -> None:
     for i, group in enumerate(groups):
         values = biological.loc[biological["Number of cells"] == group, "copies_per_cell"].to_numpy()
         ax.scatter(x[i] + np.linspace(-0.05, 0.05, len(values)), values, s=10, color=COLORS["dark"], zorder=3)
-    ax.set(xticks=x, xticklabels=[f"{int(v):,}" for v in groups], xlabel="Number of cells used for analysis", ylabel="sxtA4 copy number per cell")
+    ax.set(xticks=x, xticklabels=[f"{int(v):,}" for v in groups], xlabel="Number of cells used for analysis", ylabel=r"$sxtA4$ copy number per cell")
     panel_label(ax, "c")
     save_figure(fig, output_dir, "Extended_Data_Figure1c")
+
+
+def plot_ed1d_f(source: Path, output_dir: Path) -> None:
+    accessibility = pd.read_excel(source, sheet_name="ED_Fig.1d")
+    opening = pd.read_excel(source, sheet_name="ED_Fig.1e")
+    position = pd.read_excel(source, sheet_name="ED_Fig.1f")
+    guide_order = ["Site1_A4_C19", "Site1_A4_U19", "Site1_C4_C19", "Site1_C4_U19", "Site2"]
+    guide_labels = ["Site1 A4/C19", "Site1 A4/U19", "Site1 C4/C19", "Site1 C4/U19", "Site2"]
+    if set(accessibility["guide_id"]) != set(guide_order) or set(opening["guide_id"]) != set(guide_order):
+        raise ValueError("ED Fig. 1d–e requires all four crRNA-site1 expansions and crRNA-site2.")
+    if set(position["guide_id"]) != set(guide_order) or position.groupby("guide_id").size().to_dict() != {guide: 42 for guide in guide_order}:
+        raise ValueError("ED Fig. 1f requires 42 positions for each of five mature-crRNA models.")
+
+    fig = plt.figure(figsize=(7.2, 6.7), constrained_layout=True)
+    grid = fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.35])
+    x = np.arange(len(guide_order))
+    width = 0.24
+
+    ax = fig.add_subplot(grid[0, 0])
+    ordered = accessibility.set_index("guide_id").reindex(guide_order)
+    for offset, column, label, color in (
+        (-width, "full_spacer_aup", "Full spacer", "#B9B7AF"),
+        (0, "seed_1_5_aup", "Seed 1–5", COLORS["blue"]),
+        (width, "seed_1_8_aup", "Seed 1–8", COLORS["teal"]),
+    ):
+        ax.bar(x + offset, ordered[column], width, color=color, edgecolor=COLORS["dark"], label=label)
+    ax.set(xticks=x, xticklabels=guide_labels, ylabel="Average unpaired probability", ylim=(0, 1.05))
+    ax.tick_params(axis="x", rotation=20)
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    panel_label(ax, "d")
+
+    ax = fig.add_subplot(grid[1, 0])
+    ordered = opening.set_index("guide_id").reindex(guide_order)
+    for offset, column, label, color in (
+        (-width, "full_spacer_opening_energy_kcal_mol", "Full spacer", "#B9B7AF"),
+        (0, "seed_1_5_opening_energy_kcal_mol", "Seed 1–5", COLORS["blue"]),
+        (width, "seed_1_8_opening_energy_kcal_mol", "Seed 1–8", COLORS["teal"]),
+    ):
+        ax.bar(x + offset, ordered[column], width, color=color, edgecolor=COLORS["dark"], label=label)
+    ax.set(xticks=x, xticklabels=guide_labels, ylabel="Opening penalty (kcal mol$^{-1}$)")
+    ax.tick_params(axis="x", rotation=20)
+    panel_label(ax, "e")
+
+    ax = fig.add_subplot(grid[2, 0])
+    matrix = position.pivot(index="guide_id", columns="position", values="unpaired_probability").reindex(guide_order)
+    image = ax.imshow(matrix.to_numpy(dtype=float), aspect="auto", cmap="viridis", vmin=0, vmax=1, interpolation="nearest", rasterized=True)
+    ax.axvline(20.5, color="white", lw=0.8)
+    ax.axvline(28.5, color="#D9C7FF", lw=0.8, ls="--")
+    ax.set(yticks=np.arange(5), yticklabels=guide_labels, xticks=[0, 10, 20, 21, 28, 34, 41], xticklabels=["1", "11", "21", "22", "29", "35", "42"], xlabel="Position in mature crRNA", ylabel="crRNA model")
+    colorbar = fig.colorbar(image, ax=ax, fraction=0.02, pad=0.02)
+    colorbar.set_label("Unpaired probability")
+    panel_label(ax, "f")
+
+    save_figure(fig, output_dir, "Extended_Data_Figure1d_f")
+
+
+def validate_ed1g_lane_map(source: Path) -> None:
+    lane_map = pd.read_excel(source, sheet_name="ED_Fig.1g", header=3)
+    required = {"crRNA", "Lane", "Reaction medium / control", "RNP present", "Qualitative observation", "Displayed source file"}
+    if not required.issubset(lane_map.columns) or len(lane_map) != 9:
+        raise ValueError("ED Fig. 1g lane map is incomplete.")
+    expected = {"crRNA-site1": 4, "crRNA-site2": 5}
+    if lane_map.groupby("crRNA").size().to_dict() != expected:
+        raise ValueError("ED Fig. 1g must contain four crRNA-site1 lanes and five crRNA-site2 lanes.")
 
 
 ED2_BLUE_CMAP = LinearSegmentedColormap.from_list(
@@ -524,6 +588,8 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     source = source_dir / "Source_data_Extended_data_fig.xlsx"
     plot_ed1b(source, output_dir)
     plot_ed1c(source, output_dir)
+    plot_ed1d_f(source, output_dir)
+    validate_ed1g_lane_map(source)
     plot_ed2(source, output_dir)
     plot_ed6(source, output_dir)
     plot_ed7(source, output_dir)

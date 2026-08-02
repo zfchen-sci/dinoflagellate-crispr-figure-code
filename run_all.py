@@ -11,6 +11,7 @@ REQUIRED_SOURCE_FILES = (
     "Source_data_fig2.xlsx",
     "Source_data_fig3.xlsx",
     "Source_data_fig4.xlsx",
+    "Source_data_fig5.xlsx",
     "Source_data_Extended_data_fig.xlsx",
 )
 
@@ -53,7 +54,7 @@ def main() -> None:
     figures.mkdir(exist_ok=True)
 
     run(scripts / "statistics.py", source, results)
-    for name in ("plot_figure1.py", "plot_figure2.py", "plot_figure3.py", "plot_figure4.py", "plot_extended_data.py"):
+    for name in ("plot_figure1.py", "plot_figure2.py", "plot_figure3.py", "plot_figure4.py", "plot_figure5.py", "plot_extended_data.py"):
         run(scripts / name, source, figures)
 
     print(f"Source data: {source}")

@@ -7,7 +7,7 @@ saxitoxin biosynthesis*.
 ## Repository contents
 
 - `run_all.py`: main entry point for all analyses and figures.
-- `scripts/plot_figure1.py` to `scripts/plot_figure4.py`: main-figure plotting scripts.
+- `scripts/plot_figure1.py` to `scripts/plot_figure5.py`: current main-figure plotting scripts.
 - `scripts/plot_extended_data.py`: Extended Data figure plotting script.
 - `scripts/statistics.py`: statistical analyses and tabulated results.
 - `requirements.txt`: required Python packages.
@@ -35,9 +35,10 @@ the following workbook names:
 - `Source_data_fig2.xlsx`
 - `Source_data_fig3.xlsx`
 - `Source_data_fig4.xlsx`
+- `Source_data_fig5.xlsx`
 - `Source_data_Extended_data_fig.xlsx`
 
-Place all five workbooks either in this repository directory, in its parent
+Place all six workbooks either in this repository directory, in its parent
 directory, or in a separate directory supplied with `--source`.
 
 ## Usage
@@ -66,16 +67,26 @@ Existing files with the same output names are replaced.
 
 ## Reproducibility notes
 
-The scripts validate required workbook names, worksheet structures and several
-expected data dimensions before generating outputs. They do not modify the
-source-data workbooks. SVG and PDF are the preferred editable and publication
-formats; PNG files are provided for convenient previewing.
+The scripts validate required workbook names, worksheet structures and expected
+data dimensions before generating outputs. They do not modify the source-data
+workbooks. SVG and PDF are the preferred editable and publication formats; PNG
+files are provided only as convenient previews. No TIFF files are generated.
 
-Figure 3 inferential comparisons are restricted to panels d and e. Both panels
-use two-sided Welch t-tests at each time point, with Holm adjustment applied
-separately to the four comparisons in panel d and the eight comparisons in
-panel e. Figure labels are derived from the adjusted P values. Figure 4e is
-descriptive and is not subjected to an additional hypothesis test.
+The current mapping is Figure 1 (copy-aware target and free-crRNA predictions),
+Figure 2 (microinjection and UvrD optimization), Figure 3 (delivery, editing and
+repair), Figure 4 (molecular and toxin phenotypes) and Figure 5
+(transcriptomics). Cell recovery in Figure 3b–e is descriptive and displays the
+three independent cell sets. Figure 3f uses one-way ANOVA with Tukey HSD;
+Figure 3g and 3h use two-sided Welch t-tests; Figure 3i uses Welch one-way ANOVA
+with Games–Howell pairwise tests. Figure 4d and 4e and Figure 5b and 5c use
+two-sided Welch tests with the multiplicity adjustments recorded in
+`statistics_results.xlsx`. Figure 5e is descriptive and is not subjected to an
+additional hypothesis test.
+
+Extended Data Figure 1d–f is recreated from the free-RNA prediction tables.
+Extended Data Figure 1g is a qualitative gel assay: its workbook sheet records
+the displayed lane map and splice disclosure, and the scripts deliberately do
+not invent densitometry.
 
 ## Citation
 
