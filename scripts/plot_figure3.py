@@ -45,20 +45,58 @@ def cell_recovery_panel(ax: plt.Axes, raw: pd.DataFrame, strategy: str, panel: s
     subset = raw.loc[raw["Injection strategy"] == strategy].copy()
     doses = [5, 30, 1200]
     x = np.arange(3)
-    width = 0.34
+    jitter = np.array([-0.035, 0.0, 0.035])
     for offset, column, label, color in (
-        (-width / 2, "Germination (% injected)", "Germinated", COLORS["blue"]),
-        (width / 2, "Viable-cell recovery (% injected)", "Viable", COLORS["orange"]),
+        (-0.10, "Germination (% injected)", "Germinated", "#4E8FDF"),
+        (0.10, "Viable-cell recovery (% injected)", "Viable", "#F3A055"),
     ):
-        groups = [subset.loc[subset["RNP concentration (nM)"] == dose, column].dropna() for dose in doses]
-        means = [group.mean() for group in groups]
-        sds = [group.std(ddof=1) for group in groups]
-        positions = x + offset
-        ax.bar(positions, means, width, yerr=sds, capsize=2, color=color, edgecolor=COLORS["dark"], label=label)
-        for position, group in zip(positions, groups):
-            ax.scatter(np.full(len(group), position), group, s=8, c=COLORS["dark"], zorder=3)
-    display = {"Cytosol": "Cytosolic delivery", "Nuclei": "Nuclear delivery", "UvrD+Cytosol": "UvrD + cytosol", "UvrD+Nuclei": "UvrD + nucleus"}[strategy]
-    ax.set(xticks=x, xticklabels=["5", "30", "1,200"], xlabel="RNP concentration (nM)", ylabel="Recovery (% injected)", ylim=(0, 105), title=display)
+        for dose_index, dose in enumerate(doses):
+            values = subset.loc[
+                subset["RNP concentration (nM)"] == dose, column
+            ].dropna().to_numpy(dtype=float)
+            if len(values) != 3:
+                raise ValueError(
+                    f"Fig. 3{panel}: {strategy}, {dose} nM has {len(values)} values; expected 3."
+                )
+            position = x[dose_index] + offset
+            ax.scatter(
+                position + jitter,
+                values,
+                s=13,
+                facecolor=color,
+                edgecolor=COLORS["dark"],
+                linewidth=0.65,
+                alpha=0.92,
+                zorder=4,
+                label=label if dose_index == 0 else None,
+            )
+            ax.errorbar(
+                position,
+                values.mean(),
+                yerr=values.std(ddof=1),
+                fmt="_",
+                markersize=8,
+                markeredgewidth=1.4,
+                color=color,
+                capsize=2,
+                elinewidth=0.85,
+                zorder=5,
+            )
+    display = {
+        "Cytosol": "Cytosolic RNP",
+        "Nuclei": "Nuclear RNP",
+        "UvrD+Cytosol": "Cytosolic RNP + UvrD",
+        "UvrD+Nuclei": "Nuclear RNP + UvrD",
+    }[strategy]
+    ax.set(
+        xticks=x,
+        xticklabels=["5", "30", "1,200"],
+        xlabel="Cas12a RNP concentration (nM)",
+        ylabel="Recovery (% of injected cells)",
+        ylim=(0, 105),
+        yticks=[0, 25, 50, 75, 100],
+        title=display,
+    )
     panel_label(ax, panel)
 
 

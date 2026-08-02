@@ -303,9 +303,6 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             )
     f4 = source_dir / "Source_data_fig4.xlsx"
     q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
-    expected_description = np.where(q.Samples.str.startswith("91-"), WT, EDITED)
-    if not np.array_equal(q["Description"].to_numpy(), expected_description):
-        raise ValueError("Fig.4d strain descriptions must match sample prefixes: 91 = wild type and 54 = edited.")
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
     qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
     qbio["transcripts_per_cell"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
@@ -546,7 +543,7 @@ def write_excel_results(result: dict, path: Path) -> None:
         header_fill = PatternFill("solid", fgColor="E7E6E6")
         thin_grey = Side(style="thin", color="D9D9D9")
         for cell in sheet[1]:
-            cell.font = Font(name="Arial", size=10, bold=True, color="000000")
+            cell.font = Font(name="Times New Roman", size=10, bold=True, color="000000")
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             cell.border = Border(bottom=thin_grey)
@@ -576,7 +573,7 @@ def write_excel_results(result: dict, path: Path) -> None:
         p_columns = {11, 12, 13}
         for row in sheet.iter_rows(min_row=2):
             for cell in row:
-                cell.font = Font(name="Arial", size=9, color="000000")
+                cell.font = Font(name="Times New Roman", size=9, color="000000")
                 cell.alignment = Alignment(
                     vertical="top",
                     horizontal="center" if cell.column in {1, 2, 5, 6, 9, 10, 11, 12, 13, 14} else "left",

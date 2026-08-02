@@ -92,60 +92,6 @@ def plot_ed1c(source: Path, output_dir: Path) -> None:
     save_figure(fig, output_dir, "Extended_Data_Figure1c")
 
 
-def plot_ed1d_f(source: Path, output_dir: Path) -> None:
-    accessibility = pd.read_excel(source, sheet_name="ED_Fig.1d")
-    opening = pd.read_excel(source, sheet_name="ED_Fig.1e")
-    position = pd.read_excel(source, sheet_name="ED_Fig.1f")
-    guide_order = ["Site1_A4_C19", "Site1_A4_U19", "Site1_C4_C19", "Site1_C4_U19", "Site2"]
-    guide_labels = ["Site1 A4/C19", "Site1 A4/U19", "Site1 C4/C19", "Site1 C4/U19", "Site2"]
-    if set(accessibility["guide_id"]) != set(guide_order) or set(opening["guide_id"]) != set(guide_order):
-        raise ValueError("ED Fig. 1d–e requires all four crRNA-site1 expansions and crRNA-site2.")
-    if set(position["guide_id"]) != set(guide_order) or position.groupby("guide_id").size().to_dict() != {guide: 42 for guide in guide_order}:
-        raise ValueError("ED Fig. 1f requires 42 positions for each of five mature-crRNA models.")
-
-    fig = plt.figure(figsize=(7.2, 6.7), constrained_layout=True)
-    grid = fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.35])
-    x = np.arange(len(guide_order))
-    width = 0.24
-
-    ax = fig.add_subplot(grid[0, 0])
-    ordered = accessibility.set_index("guide_id").reindex(guide_order)
-    for offset, column, label, color in (
-        (-width, "full_spacer_aup", "Full spacer", "#B9B7AF"),
-        (0, "seed_1_5_aup", "Seed 1–5", COLORS["blue"]),
-        (width, "seed_1_8_aup", "Seed 1–8", COLORS["teal"]),
-    ):
-        ax.bar(x + offset, ordered[column], width, color=color, edgecolor=COLORS["dark"], label=label)
-    ax.set(xticks=x, xticklabels=guide_labels, ylabel="Average unpaired probability", ylim=(0, 1.05))
-    ax.tick_params(axis="x", rotation=20)
-    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
-    panel_label(ax, "d")
-
-    ax = fig.add_subplot(grid[1, 0])
-    ordered = opening.set_index("guide_id").reindex(guide_order)
-    for offset, column, label, color in (
-        (-width, "full_spacer_opening_energy_kcal_mol", "Full spacer", "#B9B7AF"),
-        (0, "seed_1_5_opening_energy_kcal_mol", "Seed 1–5", COLORS["blue"]),
-        (width, "seed_1_8_opening_energy_kcal_mol", "Seed 1–8", COLORS["teal"]),
-    ):
-        ax.bar(x + offset, ordered[column], width, color=color, edgecolor=COLORS["dark"], label=label)
-    ax.set(xticks=x, xticklabels=guide_labels, ylabel="Opening penalty (kcal mol$^{-1}$)")
-    ax.tick_params(axis="x", rotation=20)
-    panel_label(ax, "e")
-
-    ax = fig.add_subplot(grid[2, 0])
-    matrix = position.pivot(index="guide_id", columns="position", values="unpaired_probability").reindex(guide_order)
-    image = ax.imshow(matrix.to_numpy(dtype=float), aspect="auto", cmap="viridis", vmin=0, vmax=1, interpolation="nearest", rasterized=True)
-    ax.axvline(20.5, color="white", lw=0.8)
-    ax.axvline(28.5, color="#D9C7FF", lw=0.8, ls="--")
-    ax.set(yticks=np.arange(5), yticklabels=guide_labels, xticks=[0, 10, 20, 21, 28, 34, 41], xticklabels=["1", "11", "21", "22", "29", "35", "42"], xlabel="Position in mature crRNA", ylabel="crRNA model")
-    colorbar = fig.colorbar(image, ax=ax, fraction=0.02, pad=0.02)
-    colorbar.set_label("Unpaired probability")
-    panel_label(ax, "f")
-
-    save_figure(fig, output_dir, "Extended_Data_Figure1d_f")
-
-
 def validate_ed1g_lane_map(source: Path) -> None:
     lane_map = pd.read_excel(source, sheet_name="ED_Fig.1g", header=3)
     required = {"crRNA", "Lane", "Reaction medium / control", "RNP present", "Qualitative observation", "Displayed source file"}
@@ -154,6 +100,137 @@ def validate_ed1g_lane_map(source: Path) -> None:
     expected = {"crRNA-site1": 4, "crRNA-site2": 5}
     if lane_map.groupby("crRNA").size().to_dict() != expected:
         raise ValueError("ED Fig. 1g must contain four crRNA-site1 lanes and five crRNA-site2 lanes.")
+
+
+def plot_ed1d_f(source: Path, output_dir: Path) -> None:
+    """Recreate ED Fig. 1d–f using the palette and geometry of the formal artwork."""
+    accessibility = pd.read_excel(source, sheet_name="ED_Fig.1d")
+    opening = pd.read_excel(source, sheet_name="ED_Fig.1e")
+    position = pd.read_excel(source, sheet_name="ED_Fig.1f")
+    guide_order = [
+        "Site1_A4_C19",
+        "Site1_A4_U19",
+        "Site1_C4_C19",
+        "Site1_C4_U19",
+        "Site2",
+    ]
+    guide_labels = [
+        "Site1 A4/C19",
+        "Site1 A4/U19",
+        "Site1 C4/C19",
+        "Site1 C4/U19",
+        "Site2",
+    ]
+    short_labels = ["S1\nA4/C19", "S1\nA4/U19", "S1\nC4/C19", "S1\nC4/U19", "Site2"]
+    if set(accessibility["guide_id"]) != set(guide_order) or set(opening["guide_id"]) != set(guide_order):
+        raise ValueError("ED Fig. 1d–e requires all four crRNA-site1 expansions and crRNA-site2.")
+    expected_positions = {guide: 42 for guide in guide_order}
+    if set(position["guide_id"]) != set(guide_order) or position.groupby("guide_id").size().to_dict() != expected_positions:
+        raise ValueError("ED Fig. 1f requires 42 positions for each of five mature-crRNA models.")
+
+    fig = plt.figure(figsize=(7.2, 6.2))
+    grid = fig.add_gridspec(
+        3,
+        1,
+        height_ratios=[1.0, 1.0, 1.18],
+        left=0.09,
+        right=0.96,
+        bottom=0.09,
+        top=0.96,
+        hspace=0.58,
+    )
+    x = np.arange(len(guide_order))
+    width = 0.24
+    full_color = "#1D9383"
+    seed5_color = "#C23892"
+    seed8_color = "#7B5AB6"
+
+    axis_d = fig.add_subplot(grid[0, 0])
+    ordered = accessibility.set_index("guide_id").reindex(guide_order)
+    for offset, column, label, color in (
+        (-width, "full_spacer_aup", "full spacer", full_color),
+        (0, "seed_1_5_aup", "seed 1–5", seed5_color),
+        (width, "seed_1_8_aup", "seed 1–8", seed8_color),
+    ):
+        axis_d.bar(
+            x + offset,
+            ordered[column],
+            width,
+            color=color,
+            edgecolor="white",
+            linewidth=0.4,
+            label=label,
+        )
+    axis_d.set(
+        xticks=x,
+        xticklabels=short_labels,
+        ylabel="Average unpaired probability (AUP)",
+        ylim=(0, 1.02),
+        xlabel="crRNA",
+    )
+    axis_d.legend(ncol=3, loc="upper center", bbox_to_anchor=(0.62, 1.02))
+    panel_label(axis_d, "d")
+
+    axis_e = fig.add_subplot(grid[1, 0])
+    ordered = opening.set_index("guide_id").reindex(guide_order)
+    for offset, column, label, color in (
+        (-width, "seed_1_5_opening_energy_kcal_mol", "seed 1–5", seed5_color),
+        (0, "seed_1_8_opening_energy_kcal_mol", "seed 1–8", seed8_color),
+        (width, "full_spacer_opening_energy_kcal_mol", "full", full_color),
+    ):
+        axis_e.bar(
+            x + offset,
+            ordered[column],
+            width,
+            color=color,
+            edgecolor="white",
+            linewidth=0.4,
+            label=label,
+        )
+    axis_e.set(
+        xticks=x,
+        xticklabels=short_labels,
+        ylabel=r"Opening penalty, $\Delta G$ (kcal mol$^{-1}$)",
+        xlabel="crRNA",
+    )
+    axis_e.legend(ncol=1, loc="upper left", bbox_to_anchor=(0.00, 1.01))
+    panel_label(axis_e, "e")
+
+    axis_f = fig.add_subplot(grid[2, 0])
+    matrix = (
+        position.pivot(index="guide_id", columns="position", values="unpaired_probability")
+        .reindex(guide_order)
+    )
+    color_map = LinearSegmentedColormap.from_list(
+        "ed1_accessibility", ["#F6FAFB", "#9BD1C9", "#0B6E66"]
+    )
+    image = axis_f.imshow(
+        matrix.to_numpy(dtype=float),
+        aspect="auto",
+        cmap=color_map,
+        vmin=0,
+        vmax=1,
+        interpolation="nearest",
+        rasterized=True,
+    )
+    axis_f.axvline(20.5, color="white", lw=1.0)
+    axis_f.axvline(28.5, color=seed8_color, lw=0.75, ls="--")
+    axis_f.set(
+        yticks=np.arange(5),
+        yticklabels=guide_labels,
+        xticks=np.arange(42),
+        xticklabels=np.arange(1, 43),
+        xlabel="Mature-model position",
+    )
+    axis_f.tick_params(axis="x", labelsize=4.6)
+    axis_f.text(7.5, -1.03, "canonical handle", color="#3D87BE", fontsize=5.4, fontweight="bold")
+    axis_f.text(23.0, -1.03, "seed 1–8", color=seed8_color, fontsize=5.4, fontweight="bold")
+    axis_f.text(32.0, -1.03, "spacer remainder", color=full_color, fontsize=5.4, fontweight="bold")
+    colorbar = fig.colorbar(image, ax=axis_f, fraction=0.02, pad=0.02)
+    colorbar.set_label("Unpaired probability")
+    panel_label(axis_f, "f")
+
+    save_figure(fig, output_dir, "Extended_Data_Figure1d_f")
 
 
 ED2_BLUE_CMAP = LinearSegmentedColormap.from_list(

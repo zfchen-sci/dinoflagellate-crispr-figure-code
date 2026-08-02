@@ -29,8 +29,12 @@ COLORS = {
 def configure_style() -> None:
     mpl.rcParams.update(
         {
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans", "sans-serif"],
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Times", "DejaVu Serif", "serif"],
+            "mathtext.fontset": "custom",
+            "mathtext.rm": "Times New Roman",
+            "mathtext.it": "Times New Roman:italic",
+            "mathtext.bf": "Times New Roman:bold",
             "font.size": 7,
             "axes.labelsize": 7,
             "axes.titlesize": 8,

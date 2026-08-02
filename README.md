@@ -71,6 +71,7 @@ The scripts validate required workbook names, worksheet structures and expected
 data dimensions before generating outputs. They do not modify the source-data
 workbooks. SVG and PDF are the preferred editable and publication formats; PNG
 files are provided only as convenient previews. No TIFF files are generated.
+All figure text uses Times New Roman, including math-text fallbacks.
 
 The current mapping is Figure 1 (copy-aware target and free-crRNA predictions),
 Figure 2 (microinjection and UvrD optimization), Figure 3 (delivery, editing and
@@ -87,6 +88,21 @@ Extended Data Figure 1d–f is recreated from the free-RNA prediction tables.
 Extended Data Figure 1g is a qualitative gel assay: its workbook sheet records
 the displayed lane map and splice disclosure, and the scripts deliberately do
 not invent densitometry.
+
+## Panel-specific drawing boundaries
+
+`plot_figure1.py` intentionally redraws only Fig. 1b and Fig. 1f. Fig. 1a is
+excluded, and Fig. 1e is excluded because the formal panel contains RNA
+secondary-structure diagrams; a horizontal MFE bar chart would not be a
+faithful replacement. Fig. 3b-e uses the same raw-point plus mean +/- s.d.
+geometry as the formal main figure. ED Fig. 1f uses the same teal probability
+scale, mature-crRNA boundaries and segment labels as the formal Extended Data
+figure.
+
+The source-data `Description` field is treated as original metadata and is not
+rewritten by these scripts. Analysis grouping derived from sample identifiers
+is explicit in the code and should be checked against the authors' final sample
+map before submission.
 
 ## Citation
 

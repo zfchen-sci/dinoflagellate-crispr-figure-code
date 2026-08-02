@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common import COLORS, configure_style, panel_label, save_figure
+from common import configure_style, panel_label, save_figure
 
 
 GUIDE_ORDER = [
@@ -26,83 +26,121 @@ def validate_columns(data: pd.DataFrame, required: set[str], label: str) -> None
 
 
 def plot(source_dir: Path, output_dir: Path) -> None:
+    """Recreate only the quantitative Fig. 1 panels that are appropriate to redraw.
+
+    Fig. 1a is intentionally excluded. Fig. 1e is also excluded because the
+    published panel contains RNA secondary-structure diagrams; an MFE bar chart
+    would not be a faithful substitute.
+    """
     configure_style()
     source = source_dir / "Source_data_fig1.xlsx"
     composition = pd.read_excel(source, sheet_name="Fig.1a-b_base_comp", header=2)
-    metrics = pd.read_excel(source, sheet_name="Fig.1e_metrics")
     pairs = pd.read_excel(source, sheet_name="Fig.1f_pair_prob")
 
-    validate_columns(composition, {"Position", "A", "T", "C", "G", "GC content"}, "Fig. 1a–b")
-    validate_columns(metrics, {"guide_id", "guide_label", "sequence_type", "mfe_structure", "mfe_dg_kcal_mol"}, "Fig. 1e")
-    validate_columns(pairs, {"guide_id", "guide_label", "i", "j", "pair_probability", "present_in_mfe"}, "Fig. 1f")
+    validate_columns(composition, {"Position", "A", "T", "C", "G"}, "Fig. 1b")
+    validate_columns(
+        pairs,
+        {"guide_id", "guide_label", "i", "j", "pair_probability"},
+        "Fig. 1f",
+    )
 
-    fig = plt.figure(figsize=(7.2, 6.3), constrained_layout=True)
-    outer = fig.add_gridspec(3, 2, height_ratios=[1.0, 0.9, 1.25])
+    fig = plt.figure(figsize=(7.2, 4.6))
+    outer = fig.add_gridspec(
+        2,
+        1,
+        height_ratios=[1.12, 1.0],
+        left=0.09,
+        right=0.98,
+        bottom=0.10,
+        top=0.93,
+        hspace=0.55,
+    )
 
-    ax = fig.add_subplot(outer[0, 0])
-    ax.plot(composition["Position"], composition["GC content"], color=COLORS["navy"], lw=0.8)
-    ax.axvspan(2222, 2243, color="#23D9E1", alpha=0.35, linewidth=0)
-    ax.axvspan(2446, 2467, color="#23D9E1", alpha=0.35, linewidth=0)
-    ax.set(xlabel=r"Position in $sxtA$ (bp)", ylabel="GC content (%)", xlim=(1, 2870), ylim=(0, 100))
-    panel_label(ax, "a")
-
-    ax = fig.add_subplot(outer[0, 1])
-    nucleotide_colors = {"A": "#2A85B8", "C": "#3A9B42", "G": "#D42A7B", "T": "#E5A60A"}
+    axis_b = fig.add_subplot(outer[0, 0])
+    nucleotide_colors = {
+        "A": "#2388B8",
+        "C": "#2CA02C",
+        "G": "#EC168C",
+        "T": "#E6A600",
+    }
     snp = composition.loc[
         composition["Position"].between(2180, 2870)
         & ((composition[["A", "T", "C", "G"]] > 0.01).sum(axis=1) > 1)
     ].copy()
     for start, end in ((2222, 2243), (2446, 2467)):
-        ax.axvspan(start, end, color="#23D9E1", alpha=0.55, linewidth=0, zorder=0)
+        axis_b.axvspan(start, end, color="#23D9E1", alpha=0.72, linewidth=0, zorder=0)
     for base in ("A", "C", "G", "T"):
         values = snp[base].where(snp[base] > 0.01)
-        ax.scatter(snp["Position"], values, s=7, color=nucleotide_colors[base], label=base, linewidths=0)
-    ax.set(xlabel=r"SNP position in $sxtA4$ (bp)", ylabel="Relative abundance (%)", xlim=(2180, 2870), ylim=(-3, 103))
-    ax.legend(ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.17), columnspacing=0.8, handletextpad=0.3)
-    panel_label(ax, "b")
+        axis_b.scatter(
+            snp["Position"],
+            values,
+            s=10,
+            color=nucleotide_colors[base],
+            label=base,
+            linewidths=0,
+            zorder=2,
+        )
+    axis_b.set(
+        xlabel=r"SNP positions in the $sxtA4$ gene (bp)",
+        ylabel="Relative abundance (%)",
+        xlim=(2180, 2870),
+        ylim=(-4, 104),
+        xticks=[2180, 2480, 2780],
+        yticks=[0, 20, 40, 60, 80, 100],
+    )
+    axis_b.legend(
+        ncol=4,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.01),
+        columnspacing=1.4,
+        handletextpad=0.35,
+    )
+    panel_label(axis_b, "b")
 
-    ax = fig.add_subplot(outer[1, :])
-    mature = metrics.loc[metrics["sequence_type"] == "mature canonical-handle model"].copy()
-    mature["guide_id"] = pd.Categorical(mature["guide_id"], GUIDE_ORDER, ordered=True)
-    mature = mature.sort_values("guide_id")
-    if list(mature["guide_id"].astype(str)) != GUIDE_ORDER:
-        raise ValueError("Fig. 1e requires five mature-crRNA models in the expected guide order.")
-    labels = mature["guide_label"].str.replace("Site", "crRNA-site", regex=False)
-    y = np.arange(len(mature))
-    bars = ax.barh(y, -mature["mfe_dg_kcal_mol"], color=COLORS["teal"], edgecolor=COLORS["dark"], height=0.64)
-    for bar, value, structure in zip(bars, mature["mfe_dg_kcal_mol"], mature["mfe_structure"]):
-        ax.text(bar.get_width() + 0.18, bar.get_y() + bar.get_height() / 2, f"{value:.1f} kcal mol$^{{-1}}$", va="center", fontsize=6.2)
-        ax.text(0.12, bar.get_y() + bar.get_height() / 2, structure, va="center", ha="left", fontsize=5.4, family="monospace", color="white")
-    ax.set(yticks=y, yticklabels=labels, xlabel="Magnitude of predicted MFE (kcal mol$^{-1}$)")
-    ax.invert_yaxis()
-    panel_label(ax, "e")
-
-    pair_grid = outer[2, :].subgridspec(1, 5, wspace=0.12)
+    pair_grid = outer[1, 0].subgridspec(1, 5, wspace=0.38)
     for index, guide in enumerate(GUIDE_ORDER):
-        ax = fig.add_subplot(pair_grid[0, index])
-        subset = pairs.loc[pairs["guide_id"] == guide].copy()
+        axis = fig.add_subplot(pair_grid[0, index])
+        subset = pairs.loc[
+            (pairs["guide_id"] == guide) & (pairs["pair_probability"] >= 0.01)
+        ].copy()
         if subset.empty:
             raise ValueError(f"Fig. 1f has no base-pair probabilities for {guide}.")
         probability = subset["pair_probability"].to_numpy(dtype=float)
-        colors = np.where(subset["present_in_mfe"].astype(bool), COLORS["red"], COLORS["blue"])
-        ax.scatter(subset["i"], subset["j"], s=4 + 34 * probability, c=colors, alpha=0.75, linewidths=0)
-        ax.plot([1, 42], [1, 42], color="#BDBDBD", lw=0.5)
-        ax.axvline(21.5, color="#888888", lw=0.5, ls="--")
-        ax.axhline(21.5, color="#888888", lw=0.5, ls="--")
-        label = str(subset["guide_label"].iloc[0]).replace("Site", "crRNA-site")
-        ax.set(xlim=(0.5, 42.5), ylim=(0.5, 42.5), aspect="equal", title=label)
-        ax.set_xticks([1, 21, 42])
-        ax.set_yticks([1, 21, 42] if index == 0 else [])
+        axis.scatter(
+            subset["i"],
+            subset["j"],
+            s=4 + 35 * probability,
+            c=probability,
+            cmap="Blues",
+            vmin=0,
+            vmax=1,
+            alpha=0.85,
+            edgecolors="none",
+        )
+        axis.plot([1, 42], [1, 42], color="#D9E1E5", lw=0.45)
+        for boundary in (21.5, 29.5):
+            axis.axvline(boundary, color="#D9E1E5", lw=0.45, ls=":")
+            axis.axhline(boundary, color="#D9E1E5", lw=0.45, ls=":")
+        axis.set(
+            xlim=(0.5, 42.5),
+            ylim=(42.5, 0.5),
+            aspect="equal",
+            title=str(subset["guide_label"].iloc[0]),
+            xticks=[1, 21, 42],
+            yticks=[1, 21, 42] if index == 0 else [],
+            xlabel="i",
+        )
         if index == 0:
-            ax.set_ylabel("Position j")
-            panel_label(ax, "f")
-        ax.set_xlabel("Position i")
+            axis.set_ylabel("j")
+            panel_label(axis, "f")
 
     save_figure(fig, output_dir, "Figure1_data_panels")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Recreate data-driven panels for current Figure 1.")
+    parser = argparse.ArgumentParser(
+        description="Recreate current Fig. 1b and Fig. 1f; Fig. 1a and Fig. 1e are intentionally excluded."
+    )
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

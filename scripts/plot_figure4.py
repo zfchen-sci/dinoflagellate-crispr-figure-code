@@ -33,9 +33,6 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     pigment = pd.read_excel(source, sheet_name="Fig.4b", header=2)
     growth = pd.read_excel(source, sheet_name="Fig.4c", header=1)
     qpcr = pd.read_excel(source, sheet_name="Fig.4d", header=2)
-    expected_description = np.where(qpcr["Samples"].str.startswith("91-"), WT, EDITED)
-    if not np.array_equal(qpcr["Description"].to_numpy(), expected_description):
-        raise ValueError("Fig.4d strain descriptions must match sample prefixes: 91 = wild type and 54 = edited.")
     toxin = pd.read_excel(source, sheet_name="Fig.4e", header=2)
     toxin = toxin[toxin["Samples"].notna()].copy()
 
