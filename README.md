@@ -10,6 +10,7 @@ saxitoxin biosynthesis*.
 - `scripts/plot_figure1.py` to `scripts/plot_figure5.py`: current main-figure plotting scripts.
 - `scripts/plot_extended_data.py`: Extended Data figure plotting script.
 - `scripts/statistics.py`: statistical analyses and tabulated results.
+- `Statistics_analysis_by_figure_V3.2.xlsx`: by-figure results for figures with statistical tests.
 - `requirements.txt`: required Python packages.
 
 The source-data Excel workbooks are distributed with the article and are not
