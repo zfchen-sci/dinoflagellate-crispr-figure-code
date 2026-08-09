@@ -12,7 +12,10 @@ REQUIRED_SOURCE_FILES = (
     "Source_data_fig3.xlsx",
     "Source_data_fig4.xlsx",
     "Source_data_fig5.xlsx",
-    "Source_data_Extended_data_fig.xlsx",
+    "Source_data_Extended_Data_Fig1.xlsx",
+    "Source_data_Extended_Data_Fig2.xlsx",
+    "Source_data_Extended_Data_Fig6.xlsx",
+    "Source_data_Extended_Data_Fig7.xlsx",
 )
 
 

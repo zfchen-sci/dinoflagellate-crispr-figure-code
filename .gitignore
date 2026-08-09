@@ -3,5 +3,7 @@ __pycache__/
 .venv/
 figures/
 results/
+Source_data_*.xlsx
+Statistics_analysis_by_figure_V3.2.xlsx
 .DS_Store
 Thumbs.db
