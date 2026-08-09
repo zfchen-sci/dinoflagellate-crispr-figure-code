@@ -1,8 +1,12 @@
-# Figure and statistical analysis scripts
+# UvrD-assisted CRISPR microinjection enables giant dinoflagellate genome editing
 
-Python scripts used to generate the data-driven figure panels and statistical
-outputs for the article *Editing a dinoflagellate giant genome illuminates
-saxitoxin biosynthesis*.
+This repository contains the Python scripts used to generate the data-driven
+figure panels and statistical outputs for the article *UvrD-assisted CRISPR
+microinjection enables giant dinoflagellate genome editing*.
+
+This is a code-only repository. No manuscript source-data workbook or
+author-only analysis workbook is tracked here, including
+`Statistics_analysis_by_figure_V3.2.xlsx`.
 
 ## Repository contents
 
@@ -12,9 +16,8 @@ saxitoxin biosynthesis*.
 - `scripts/statistics.py`: statistical analyses and tabulated results.
 - `requirements.txt`: required Python packages.
 
-The source-data Excel workbooks and author-only analysis workbooks are not
-included in this repository. The nine source-data workbooks are distributed
-with the article and are read at run time.
+The nine source-data workbooks are distributed separately with the article and
+are read at run time.
 
 ## Requirements and installation
 
@@ -112,8 +115,9 @@ map before submission.
 
 If you use or adapt these scripts, please cite the associated article:
 
-Chen, Z. *et al.* *Editing a dinoflagellate giant genome illuminates saxitoxin
-biosynthesis*. Citation details and DOI will be added after publication.
+Chen, Z. *et al.* *UvrD-assisted CRISPR microinjection enables giant
+dinoflagellate genome editing*. Citation details and DOI will be added after
+publication.
 
 ## Questions and issues
 
