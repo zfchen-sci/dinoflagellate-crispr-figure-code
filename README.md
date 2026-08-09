@@ -4,10 +4,6 @@ This repository contains the Python scripts used to generate the data-driven
 figure panels and statistical outputs for the article *UvrD-assisted CRISPR
 microinjection enables giant dinoflagellate genome editing*.
 
-This is a code-only repository. No manuscript source-data workbook or
-author-only analysis workbook is tracked here, including
-`Statistics_analysis_by_figure_V3.2.xlsx`.
-
 ## Repository contents
 
 - `run_all.py`: main entry point for all analyses and figures.
@@ -74,42 +70,8 @@ Existing files with the same output names are replaced.
 
 ## Reproducibility notes
 
-The scripts validate required workbook names, worksheet structures and expected
-data dimensions before generating outputs. They do not modify the source-data
-workbooks. SVG and PDF are the preferred editable and publication formats; PNG
-files are provided only as convenient previews. No TIFF files are generated.
-All figure text uses Times New Roman, including math-text fallbacks.
-
-The current mapping is Figure 1 (copy-aware target and free-crRNA predictions),
-Figure 2 (microinjection and UvrD optimization), Figure 3 (delivery, editing and
-repair), Figure 4 (molecular and toxin phenotypes) and Figure 5
-(transcriptomics). Cell recovery in Figure 3b–e is descriptive and displays the
-three independent cell sets. Figure 3f uses one-way ANOVA with Tukey HSD;
-Figure 3g and 3h use two-sided Welch t-tests; Figure 3i uses Welch one-way ANOVA
-with Games–Howell pairwise tests. Figure 4d uses log10-transformed abundance for
-two-sided Welch tests while displaying values on the original scale. Figure 4e
-and Figure 5b and 5c also use two-sided Welch tests, with multiplicity
-adjustments recorded in `statistics_results.xlsx`. Figure 5e is descriptive and
-is not subjected to an additional hypothesis test.
-
-Extended Data Figure 1d–f is recreated from the free-RNA prediction tables.
-Extended Data Figure 1g is a qualitative gel assay and is not redrawn by these
-scripts because no quantitative densitometry source table is provided.
-
-## Panel-specific drawing boundaries
-
-`plot_figure1.py` intentionally redraws only Fig. 1b and Fig. 1f. Fig. 1a is
-excluded, and Fig. 1e is excluded because the formal panel contains RNA
-secondary-structure diagrams; a horizontal MFE bar chart would not be a
-faithful replacement. Fig. 3b-e uses the same raw-point plus mean +/- s.d.
-geometry as the formal main figure. ED Fig. 1f uses the same teal probability
-scale, mature-crRNA boundaries and segment labels as the formal Extended Data
-figure.
-
-The source-data `Description` field is treated as original metadata and is not
-rewritten by these scripts. Analysis grouping derived from sample identifiers
-is explicit in the code and should be checked against the authors' final sample
-map before submission.
+The scripts generate figures and statistical outputs from the nine source-data
+workbooks without modifying the input files.
 
 ## Citation
 
