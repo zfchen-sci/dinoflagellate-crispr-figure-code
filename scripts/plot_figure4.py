@@ -30,9 +30,9 @@ def parse_density(value: object) -> float:
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
     source = source_dir / "Source_data_fig4.xlsx"
-    pigment = pd.read_excel(source, sheet_name="Fig.4b")
+    pigment = pd.read_excel(source, sheet_name="Fig.4b", header=2)
     growth = pd.read_excel(source, sheet_name="Fig.4c", header=1)
-    qpcr = pd.read_excel(source, sheet_name="Fig.4d")
+    qpcr = pd.read_excel(source, sheet_name="Fig.4d", header=2)
     toxin = pd.read_excel(source, sheet_name="Fig.4e", header=2)
     toxin = toxin[toxin["Samples"].notna()].copy()
 

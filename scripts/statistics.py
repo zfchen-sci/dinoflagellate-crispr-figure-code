@@ -302,7 +302,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 }
             )
     f4 = source_dir / "Source_data_fig4.xlsx"
-    q = pd.read_excel(f4, sheet_name="Fig.4d")
+    q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
     qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
     qbio["transcripts_per_cell"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
