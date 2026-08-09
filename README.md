@@ -10,11 +10,11 @@ saxitoxin biosynthesis*.
 - `scripts/plot_figure1.py` to `scripts/plot_figure5.py`: current main-figure plotting scripts.
 - `scripts/plot_extended_data.py`: Extended Data figure plotting script.
 - `scripts/statistics.py`: statistical analyses and tabulated results.
-- `Statistics_analysis_by_figure_V3.2.xlsx`: by-figure results for figures with statistical tests.
 - `requirements.txt`: required Python packages.
 
-The source-data Excel workbooks are distributed with the article and are not
-duplicated in this repository.
+The source-data Excel workbooks and author-only analysis workbooks are not
+included in this repository. The nine source-data workbooks are distributed
+with the article and are read at run time.
 
 ## Requirements and installation
 
@@ -37,9 +37,12 @@ the following workbook names:
 - `Source_data_fig3.xlsx`
 - `Source_data_fig4.xlsx`
 - `Source_data_fig5.xlsx`
-- `Source_data_Extended_data_fig.xlsx`
+- `Source_data_Extended_Data_Fig1.xlsx`
+- `Source_data_Extended_Data_Fig2.xlsx`
+- `Source_data_Extended_Data_Fig6.xlsx`
+- `Source_data_Extended_Data_Fig7.xlsx`
 
-Place all six workbooks either in this repository directory, in its parent
+Place all nine workbooks either in this repository directory, in its parent
 directory, or in a separate directory supplied with `--source`.
 
 ## Usage
@@ -80,15 +83,15 @@ repair), Figure 4 (molecular and toxin phenotypes) and Figure 5
 (transcriptomics). Cell recovery in Figure 3b–e is descriptive and displays the
 three independent cell sets. Figure 3f uses one-way ANOVA with Tukey HSD;
 Figure 3g and 3h use two-sided Welch t-tests; Figure 3i uses Welch one-way ANOVA
-with Games–Howell pairwise tests. Figure 4d and 4e and Figure 5b and 5c use
-two-sided Welch tests with the multiplicity adjustments recorded in
-`statistics_results.xlsx`. Figure 5e is descriptive and is not subjected to an
-additional hypothesis test.
+with Games–Howell pairwise tests. Figure 4d uses log10-transformed abundance for
+two-sided Welch tests while displaying values on the original scale. Figure 4e
+and Figure 5b and 5c also use two-sided Welch tests, with multiplicity
+adjustments recorded in `statistics_results.xlsx`. Figure 5e is descriptive and
+is not subjected to an additional hypothesis test.
 
 Extended Data Figure 1d–f is recreated from the free-RNA prediction tables.
-Extended Data Figure 1g is a qualitative gel assay: its workbook sheet records
-the displayed lane map and splice disclosure, and the scripts deliberately do
-not invent densitometry.
+Extended Data Figure 1g is a qualitative gel assay and is not redrawn by these
+scripts because no quantitative densitometry source table is provided.
 
 ## Panel-specific drawing boundaries
 

@@ -87,7 +87,7 @@ def add_holm(rows: list[dict], indices: list[int]) -> None:
 
 
 def parse_injection_data(path: Path) -> pd.DataFrame:
-    df = pd.read_excel(path, sheet_name="Fig.3f-g_raw", header=21)
+    df = pd.read_excel(path, sheet_name="Fig.3b-g_raw", header=21)
     df = df[df["crRNA"].isin(["Site1", "Site2"])].copy()
     for label, denominator in {
         "per_injected": "Injected cells",
@@ -166,7 +166,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             "p_formatted": format_p(float(omnibus.pvalue)),
             "significance": significance_label(float(omnibus.pvalue)),
             "source_file": f3.name,
-            "source_sheet": "Fig.3f-g_raw",
+            "source_sheet": "Fig.3b-g_raw",
             "notes": "Omnibus test; the figure displays Tukey pairwise results.",
         }
     )
@@ -196,7 +196,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 "p_formatted": format_p(float(p_adj)),
                 "significance": significance_label(float(p_adj)),
                 "source_file": f3.name,
-                "source_sheet": "Fig.3f-g_raw",
+                "source_sheet": "Fig.3b-g_raw",
                 "notes": f"95% CI for mean difference: {ci[0]:.4f} to {ci[1]:.4f}.",
             }
         )
@@ -214,7 +214,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 "Two-tailed Welch t-test",
                 False,
                 f3.name,
-                "Fig.3f-g_raw",
+                "Fig.3b-g_raw",
             )
         )
 
@@ -302,14 +302,14 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 }
             )
     f4 = source_dir / "Source_data_fig4.xlsx"
-    q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
+    q = pd.read_excel(f4, sheet_name="Fig.4d")
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
     qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
     qbio["transcripts_per_cell"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
     qbio["log10_transcripts_per_cell"] = np.log10(qbio["transcripts_per_cell"])
-    fig3d_indices = []
+    fig4d_indices = []
     for day, sub in qbio.groupby("Days"):
-        fig3d_indices.append(len(tests))
+        fig4d_indices.append(len(tests))
         tests.append(
             t_row(
                 "Fig. 4",
@@ -325,8 +325,8 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 notes="Technical Ct replicates were averaged within each biological sample before conversion; the test uses log10 abundance and the figure displays untransformed values.",
             )
         )
-    add_holm(tests, fig3d_indices)
-    for i in fig3d_indices:
+    add_holm(tests, fig4d_indices)
+    for i in fig4d_indices:
         tests[i]["notes"] += " Holm family: the four time-point comparisons in Fig. 4d."
     checks.extend(
         [
@@ -415,8 +415,9 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
 
     gene_p: list[dict] = []
 
-    fed = source_dir / "Source_data_Extended_data_fig.xlsx"
-    ed1c = pd.read_excel(fed, sheet_name="ED_Fig.1c", header=2)
+    fed1 = source_dir / "Source_data_Extended_Data_Fig1.xlsx"
+    fed7 = source_dir / "Source_data_Extended_Data_Fig7.xlsx"
+    ed1c = pd.read_excel(fed1, sheet_name="ED_Fig.1c", header=2)
     ed1c_bio = ed1c.groupby(["Number of cells", "Samples"], as_index=False)["Ct Value"].mean()
     ed1c_bio["copy_number_per_cell"] = (
         10 ** ((39.67 - ed1c_bio["Ct Value"]) / 3.59) * 80 / ed1c_bio["Number of cells"]
@@ -432,13 +433,13 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                 "mean": mean,
                 "sd": sd,
                 "n": n,
-                "source_file": fed.name,
+                "source_file": fed1.name,
                 "source_sheet": "ED_Fig.1c",
                 "notes": "Technical Ct replicates averaged per biological sample; ×80 corrects fourfold dilution and 1/20 template fraction.",
             }
         )
 
-    ed7 = pd.read_excel(fed, sheet_name="ED_Fig.7")
+    ed7 = pd.read_excel(fed7, sheet_name="ED_Fig.7")
     ed7_rows = ed7[
         ["module", "GO.ID", "term", "timepoint", "up", "down", "DEG", "FDR", "FDR_bin"]
     ].to_dict(orient="records")
@@ -446,10 +447,10 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     panel_map = [
         ("Fig. 1", "a–c,e,f", "Fig.1a-b_base_comp; Fig.1a-b_SNPs; Fig.1c_sequences; Fig.1e_metrics; Fig.1f_pair_prob", "plot_figure1.py", "Computational predictions or descriptive source data"),
         ("Fig. 2", "d,f", "Fig.2d; Fig.2f", "plot_figure2.py", "Welch t-tests"),
-        ("Fig. 3", "a–e", "Fig.3a_design; Fig.3b-e_raw; Fig.3b-e_summary", "plot_figure3.py", "Descriptive; no inferential tests"),
-        ("Fig. 3", "f,g", "Fig.3f-g_raw; Fig.3f; Fig.3g", "plot_figure3.py", "ANOVA/Tukey and Welch t-tests"),
+        ("Fig. 3", "b–e", "Fig.3b-g_raw; Fig.3b-e", "plot_figure3.py", "Descriptive; no inferential tests"),
+        ("Fig. 3", "f,g", "Fig.3b-g_raw; Fig.3f; Fig.3g", "plot_figure3.py", "ANOVA/Tukey and Welch t-tests"),
         ("Fig. 3", "h–j", "Fig.3h-j", "plot_figure3.py", "Welch t-test; Welch ANOVA/Games-Howell; descriptive composition"),
-        ("Fig. 3", "k–m", "Fig.3k; Fig.3l; Fig.3m", "plot_figure3.py", "Descriptive"),
+        ("Fig. 3", "k,l", "Fig.3k; Fig.3l", "plot_figure3.py", "Descriptive"),
         ("Fig. 4", "b,c", "Fig.4b; Fig.4c", "plot_figure4.py", "Descriptive; no inferential comparisons"),
         ("Fig. 4", "d", "Fig.4d", "plot_figure4.py", "Log10-scale Welch tests with Holm correction"),
         ("Fig. 4", "e", "Fig.4e", "plot_figure4.py", "Welch tests with Holm correction"),
@@ -458,7 +459,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         ("Fig. 5", "c", "Fig.5c", "plot_figure5.py", "Welch tests with Holm correction"),
         ("Fig. 5", "d", "Fig.5d", "plot_figure5.py", "DESeq2 gene-level tests"),
         ("Fig. 5", "e", "Fig.5e", "plot_figure5.py", "Descriptive; no additional hypothesis test"),
-        ("Extended Data Fig. 1", "b–g", "ED_Fig.1b; ED_Fig.1c; ED_Fig.1d; ED_Fig.1e; ED_Fig.1f; ED_Fig.1g", "plot_extended_data.py", "Descriptive or computational predictions"),
+        ("Extended Data Fig. 1", "b–f", "ED_Fig.1b; ED_Fig.1c; ED_Fig.1d; ED_Fig.1e; ED_Fig.1f", "plot_extended_data.py", "Descriptive or computational predictions"),
         ("Extended Data Fig. 2", "a,b", "ED_Fig.2a; ED_Fig.2b", "plot_extended_data.py", "Descriptive heat maps"),
         ("Extended Data Fig. 6", "a–e", "ED_Fig.6a–e", "plot_extended_data.py", "PCA/Pearson/descriptive"),
         ("Extended Data Fig. 7", "", "ED_Fig.7", "plot_extended_data.py", "GO enrichment FDR"),
@@ -467,9 +468,12 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         {
             "figure": fig,
             "panel": panel,
-            "source_file": (
-                "Source_data_Extended_data_fig.xlsx" if fig.startswith("Extended") else f"Source_data_fig{fig.split('.')[1].strip()}.xlsx"
-            ),
+            "source_file": {
+                "Extended Data Fig. 1": "Source_data_Extended_Data_Fig1.xlsx",
+                "Extended Data Fig. 2": "Source_data_Extended_Data_Fig2.xlsx",
+                "Extended Data Fig. 6": "Source_data_Extended_Data_Fig6.xlsx",
+                "Extended Data Fig. 7": "Source_data_Extended_Data_Fig7.xlsx",
+            }.get(fig, f"Source_data_fig{fig.split('.')[1].strip()}.xlsx"),
             "source_sheet": sheet,
             "script": script,
             "statistics": stat,

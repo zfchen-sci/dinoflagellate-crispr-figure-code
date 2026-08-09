@@ -14,8 +14,14 @@ from common import COLORS, add_bracket, configure_style, games_howell, panel_lab
 
 
 def injection_data(path: Path) -> pd.DataFrame:
-    data = pd.read_excel(path, sheet_name="Fig.3f-g_raw", header=21)
+    data = pd.read_excel(path, sheet_name="Fig.3b-g_raw", header=21)
     data = data[data["crRNA"].isin(["Site1", "Site2"])].copy()
+    data["Germination (% injected)"] = (
+        100 * data["Germinated cells"] / data["Injected cells"].replace(0, np.nan)
+    )
+    data["Viable-cell recovery (% injected)"] = (
+        100 * data["Viable cells"] / data["Injected cells"].replace(0, np.nan)
+    )
     for label, denominator in {
         "per_injected": "Injected cells",
         "per_germinated": "Germinated cells",
@@ -103,16 +109,16 @@ def cell_recovery_panel(ax: plt.Axes, raw: pd.DataFrame, strategy: str, panel: s
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
     source = source_dir / "Source_data_fig3.xlsx"
-    cell_raw = pd.read_excel(source, sheet_name="Fig.3b-e_raw", header=3)
+    raw = injection_data(source)
+    cell_raw = raw.loc[raw["crRNA"] == "Site2"].copy()
     required_cell_columns = {"Injection strategy", "RNP concentration (nM)", "Germination (% injected)", "Viable-cell recovery (% injected)"}
     if not required_cell_columns.issubset(cell_raw.columns):
         raise ValueError("Fig. 3b–e source-data columns are incomplete.")
-    raw = injection_data(source)
     edit = pd.read_excel(source, sheet_name="Fig.3h-j")
     edit["lineage"] = edit["sample"].str.rsplit("-", n=1).str[0]
     metric = "corrected_editing_efficiency_pct"
 
-    fig, axes = plt.subplots(7, 2, figsize=(7.2, 16.0), constrained_layout=True)
+    fig, axes = plt.subplots(6, 2, figsize=(7.2, 13.7), constrained_layout=True)
     axes = axes.ravel()
 
     for ax, strategy, panel in zip(axes[:4], ["Cytosol", "Nuclei", "UvrD+Cytosol", "UvrD+Nuclei"], ["b", "c", "d", "e"]):
@@ -214,21 +220,6 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     ax.set_ylabel("Annotated candidate proteins (n)")
     ax.tick_params(axis="x", rotation=20)
     panel_label(ax, "l")
-
-    ax = axes[12]
-    motif = pd.read_excel(source, sheet_name="Fig.3m")
-    motif_pivot = motif.pivot(index=["Site", "sample"], columns="motif_length_bp", values="percent_of_sample_mutant_reads").fillna(0).reset_index()
-    x = np.arange(len(motif_pivot))
-    bottom = np.zeros(len(motif_pivot))
-    for length, color in ((2, "#1079A9"), (3, "#E2A400"), (4, "#149C73")):
-        ax.bar(x, motif_pivot[length], bottom=bottom, color=color, width=0.82, label=f"{length} bp")
-        bottom += motif_pivot[length].to_numpy()
-    ax.axvline(int((motif_pivot["Site"] == "site1").sum()) - 0.5, color="#BFBFBF", lw=0.7)
-    ax.set(xticks=x, xticklabels=motif_pivot["sample"], ylabel="Mutant reads with microhomology (%)")
-    ax.tick_params(axis="x", rotation=90, labelsize=5)
-    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
-    panel_label(ax, "m")
-    axes[13].axis("off")
 
     save_figure(fig, output_dir, "Figure3_data_panels")
 

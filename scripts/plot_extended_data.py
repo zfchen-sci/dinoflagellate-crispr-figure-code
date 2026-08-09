@@ -92,16 +92,6 @@ def plot_ed1c(source: Path, output_dir: Path) -> None:
     save_figure(fig, output_dir, "Extended_Data_Figure1c")
 
 
-def validate_ed1g_lane_map(source: Path) -> None:
-    lane_map = pd.read_excel(source, sheet_name="ED_Fig.1g", header=3)
-    required = {"crRNA", "Lane", "Reaction medium / control", "RNP present", "Qualitative observation", "Displayed source file"}
-    if not required.issubset(lane_map.columns) or len(lane_map) != 9:
-        raise ValueError("ED Fig. 1g lane map is incomplete.")
-    expected = {"crRNA-site1": 4, "crRNA-site2": 5}
-    if lane_map.groupby("crRNA").size().to_dict() != expected:
-        raise ValueError("ED Fig. 1g must contain four crRNA-site1 lanes and five crRNA-site2 lanes.")
-
-
 def plot_ed1d_f(source: Path, output_dir: Path) -> None:
     """Recreate ED Fig. 1d–f using the palette and geometry of the formal artwork."""
     accessibility = pd.read_excel(source, sheet_name="ED_Fig.1d")
@@ -662,14 +652,16 @@ def plot_ed7(source: Path, output_dir: Path) -> None:
 
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
-    source = source_dir / "Source_data_Extended_data_fig.xlsx"
-    plot_ed1b(source, output_dir)
-    plot_ed1c(source, output_dir)
-    plot_ed1d_f(source, output_dir)
-    validate_ed1g_lane_map(source)
-    plot_ed2(source, output_dir)
-    plot_ed6(source, output_dir)
-    plot_ed7(source, output_dir)
+    ed1 = source_dir / "Source_data_Extended_Data_Fig1.xlsx"
+    ed2 = source_dir / "Source_data_Extended_Data_Fig2.xlsx"
+    ed6 = source_dir / "Source_data_Extended_Data_Fig6.xlsx"
+    ed7 = source_dir / "Source_data_Extended_Data_Fig7.xlsx"
+    plot_ed1b(ed1, output_dir)
+    plot_ed1c(ed1, output_dir)
+    plot_ed1d_f(ed1, output_dir)
+    plot_ed2(ed2, output_dir)
+    plot_ed6(ed6, output_dir)
+    plot_ed7(ed7, output_dir)
 
 
 def main() -> None:
