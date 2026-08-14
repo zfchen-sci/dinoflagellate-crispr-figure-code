@@ -13,7 +13,13 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.oneway import anova_oneway
 
-from common import format_p, games_howell, mean_sd, significance_label
+from common import (
+    format_p,
+    games_howell,
+    infer_fig4_qpcr_strain,
+    mean_sd,
+    significance_label,
+)
 
 
 WT = "Wild-type strain"
@@ -304,7 +310,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     f4 = source_dir / "Source_data_fig4.xlsx"
     q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
-    qbio["Strain"] = np.where(qbio.Samples.str.contains("91"), WT, EDITED)
+    qbio["Strain"] = infer_fig4_qpcr_strain(qbio["Samples"], WT, EDITED)
     qbio["transcripts_per_cell"] = 10 ** ((39.67 - qbio.Ct) / 3.59) / qbio["Cell density (cells/ml)"]
     qbio["log10_transcripts_per_cell"] = np.log10(qbio["transcripts_per_cell"])
     fig4d_indices = []
@@ -328,18 +334,6 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     add_holm(tests, fig4d_indices)
     for i in fig4d_indices:
         tests[i]["notes"] += " Holm family: the four time-point comparisons in Fig. 4d."
-    checks.extend(
-        [
-            {
-                "severity": "Medium",
-                "location": "Methods / Fig. 4d",
-                "issue": "The displayed significance is reproduced by testing log10-transformed abundance, but the current Methods does not state this transformation.",
-                "resolution_in_scripts": "Biological-sample abundances are log10 transformed for the t-test; bars remain on the original scale.",
-                "submission_action": "State the transformation explicitly in Methods and the figure legend.",
-            },
-        ]
-    )
-
     toxin = pd.read_excel(f4, sheet_name="Fig.4e", header=2)
     toxin = toxin[toxin.Samples.notna()].copy()
     toxin["day"] = toxin.Samples.str.extract(r"-(?:91|54)-(\d+)-")[0].astype(int)

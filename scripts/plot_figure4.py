@@ -10,7 +10,15 @@ import pandas as pd
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 
-from common import COLORS, add_bracket, configure_style, panel_label, save_figure, significance_label
+from common import (
+    COLORS,
+    add_bracket,
+    configure_style,
+    infer_fig4_qpcr_strain,
+    panel_label,
+    save_figure,
+    significance_label,
+)
 
 
 WT = "Wild-type strain"
@@ -86,7 +94,7 @@ def plot(source_dir: Path, output_dir: Path) -> None:
 
     ax = fig.add_subplot(grid[1, :])
     qbio = qpcr.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False)["Ct"].mean()
-    qbio["Strain"] = np.where(qbio["Samples"].str.contains("91"), WT, EDITED)
+    qbio["Strain"] = infer_fig4_qpcr_strain(qbio["Samples"], WT, EDITED)
     qbio["transcripts"] = 10 ** ((39.67 - qbio["Ct"]) / 3.59) / qbio["Cell density (cells/ml)"]
     qbio["log10_transcripts"] = np.log10(qbio["transcripts"])
     days = [5, 9, 13, 15]

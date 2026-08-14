@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 from pathlib import Path
 
 import matplotlib as mpl
@@ -132,7 +133,17 @@ def add_bracket(
     span = ymax - ymin
     h = height if height is not None else span * 0.025
     ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], color="black", lw=linewidth, clip_on=False)
-    ax.text((x1 + x2) / 2, y + h + span * 0.008, label, ha="center", va="bottom", fontsize=6.5)
+    ax.annotate(
+        label,
+        xy=((x1 + x2) / 2, y + h),
+        xycoords="data",
+        xytext=(0, 2),
+        textcoords="offset points",
+        ha="center",
+        va="bottom",
+        fontsize=6.5,
+        annotation_clip=False,
+    )
 
 
 def mean_sd(values) -> tuple[float, float, int]:
@@ -144,6 +155,24 @@ def mean_sd(values) -> tuple[float, float, int]:
 def safe_log10(values):
     arr = np.asarray(values, dtype=float)
     return np.log10(np.where(arr > 0, arr, np.nan))
+
+
+def infer_fig4_qpcr_strain(samples, wt_label: str, edited_label: str) -> np.ndarray:
+    """Map the Fig. 4d culture identifiers to the two analysis groups.
+
+    The current source workbook uses culture identifier 91 for the wild-type
+    group and 54 for the edited group.  Match complete hyphen-delimited tokens
+    so unrelated digits elsewhere in a sample name cannot silently change the
+    assignment.
+    """
+    labels = np.asarray(samples, dtype=str)
+    is_wt = np.array([bool(re.search(r"(?:^|-)91-", value)) for value in labels])
+    is_edited = np.array([bool(re.search(r"(?:^|-)54-", value)) for value in labels])
+    invalid = is_wt == is_edited
+    if invalid.any():
+        bad = ", ".join(sorted(set(labels[invalid])))
+        raise ValueError(f"Unrecognized or ambiguous Fig. 4d sample identifiers: {bad}")
+    return np.where(is_wt, wt_label, edited_label)
 
 
 def panel_label(ax: mpl.axes.Axes, label: str) -> None:

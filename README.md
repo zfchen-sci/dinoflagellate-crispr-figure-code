@@ -1,8 +1,8 @@
-# UvrD-assisted CRISPR microinjection enables giant dinoflagellate genome editing
+# UvrD-assisted CRISPR editing of a dinoflagellate giant genome illuminates saxitoxin biosynthesis
 
 This repository contains the Python scripts used to generate the data-driven
 figure panels and statistical outputs for the article *UvrD-assisted CRISPR
-microinjection enables giant dinoflagellate genome editing*.
+editing of a dinoflagellate giant genome illuminates saxitoxin biosynthesis*.
 
 ## Repository contents
 
@@ -10,6 +10,8 @@ microinjection enables giant dinoflagellate genome editing*.
 - `scripts/plot_figure1.py` to `scripts/plot_figure5.py`: current main-figure plotting scripts.
 - `scripts/plot_extended_data.py`: Extended Data figure plotting script.
 - `scripts/statistics.py`: statistical analyses and tabulated results.
+- `scripts/validate_outputs.py`: regression checks against the source-data
+  Statistics sheets and structural checks for every generated artifact.
 - `requirements.txt`: required Python packages.
 
 The nine source-data workbooks are distributed separately with the article and
@@ -68,18 +70,29 @@ The command creates:
 
 Existing files with the same output names are replaced.
 
+After generation, `run_all.py` verifies that all 55 statistical rows reproduce
+the values recorded in the source-data Statistics sheets, validates all 33
+SVG/PDF/PNG artifacts and confirms that the nine input workbooks retain their
+original SHA-256 hashes. Any mismatch stops the run with a non-zero exit code.
+
 ## Reproducibility notes
 
 The scripts generate figures and statistical outputs from the nine source-data
-workbooks without modifying the input files.
+workbooks without modifying the input files. SVG and PDF are the preferred
+editable formats, and PNG files are convenient previews; TIFF is not generated.
+
+The analyses reported in the manuscript used Python 3.11.3, SciPy 1.10.0 and
+statsmodels 0.13.5. The dependency ranges in `requirements.txt` support current
+compatible environments; the built-in regression checks protect the reported
+statistics from numerical or workbook-schema drift.
 
 ## Citation
 
 If you use or adapt these scripts, please cite the associated article:
 
-Chen, Z. *et al.* *UvrD-assisted CRISPR microinjection enables giant
-dinoflagellate genome editing*. Citation details and DOI will be added after
-publication.
+Chen, Z. *et al.* *UvrD-assisted CRISPR editing of a dinoflagellate giant
+genome illuminates saxitoxin biosynthesis*. Citation details and DOI will be
+added after publication.
 
 ## Questions and issues
 
