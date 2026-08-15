@@ -108,7 +108,7 @@ def cell_recovery_panel(ax: plt.Axes, raw: pd.DataFrame, strategy: str, panel: s
 
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
-    source = source_dir / "Source_data_fig3.xlsx"
+    source = source_dir / "Source_Data_Figure_3.xlsx"
     raw = injection_data(source)
     cell_raw = raw.loc[raw["crRNA"] == "Site2"].copy()
     required_cell_columns = {"Injection strategy", "RNP concentration (nM)", "Germination (% injected)", "Viable-cell recovery (% injected)"}
@@ -215,10 +215,36 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     panel_label(ax, "k")
 
     ax = axes[11]
-    candidates = pd.read_excel(source, sheet_name="Fig.3l")
-    ax.bar(candidates["Category"], candidates["candidate_items_n"], color=["#58A9D7", "#E4A300", "#13A47A"], edgecolor=COLORS["dark"])
-    ax.set_ylabel("Annotated candidate proteins (n)")
-    ax.tick_params(axis="x", rotation=20)
+    microhomology = pd.read_excel(source, sheet_name="Fig.3l", header=3)
+    microhomology = microhomology[microhomology["Target site"].notna()].copy()
+    sites = ["crRNA-site1", "crRNA-site2"]
+    lengths = [2, 3, 4]
+    x = np.arange(len(sites))
+    width = 0.22
+    for offset, length, color in zip((-1, 0, 1), lengths, ("#58A9D7", "#E4A300", "#13A47A")):
+        values = [
+            microhomology.loc[
+                (microhomology["Target site"] == site)
+                & (microhomology["Microhomology length (bp)"] == length),
+                "Percent of mutant reads",
+            ].iloc[0]
+            for site in sites
+        ]
+        ax.bar(
+            x + offset * width,
+            values,
+            width=width,
+            color=color,
+            edgecolor=COLORS["dark"],
+            linewidth=0.5,
+            label=f"{length} bp",
+        )
+    ax.set(
+        xticks=x,
+        xticklabels=sites,
+        ylabel="Mutant reads with microhomology (%)",
+    )
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
     panel_label(ax, "l")
 
     save_figure(fig, output_dir, "Figure3_data_panels")

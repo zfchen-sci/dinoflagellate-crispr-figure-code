@@ -57,7 +57,7 @@ def main() -> None:
         "--source",
         type=Path,
         default=None,
-        help="Folder containing the Source_data_*.xlsx files.",
+        help="Folder containing the six Source_Data_*.xlsx files.",
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parent
@@ -76,7 +76,6 @@ def main() -> None:
         "plot_figure2.py",
         "plot_figure3.py",
         "plot_figure4.py",
-        "plot_figure5.py",
         "plot_extended_data.py",
     ):
         run(scripts / name, source, figures)

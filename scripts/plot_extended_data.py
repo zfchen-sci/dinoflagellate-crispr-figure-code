@@ -6,9 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.path import Path as MplPath
 from scipy import stats
 
 from common import COLORS, configure_style, panel_label, save_figure
@@ -71,7 +69,7 @@ def plot_ed1b(source: Path, output_dir: Path) -> None:
         ylabel="Ct value",
     )
     panel_label(ax, "b")
-    save_figure(fig, output_dir, "Extended_Data_Figure1b")
+    save_figure(fig, output_dir, "Supplementary_Figure_S1b")
 
 
 def plot_ed1c(source: Path, output_dir: Path) -> None:
@@ -89,7 +87,7 @@ def plot_ed1c(source: Path, output_dir: Path) -> None:
         ax.scatter(x[i] + np.linspace(-0.05, 0.05, len(values)), values, s=10, color=COLORS["dark"], zorder=3)
     ax.set(xticks=x, xticklabels=[f"{int(v):,}" for v in groups], xlabel="Number of cells used for analysis", ylabel=r"$sxtA4$ copy number per cell")
     panel_label(ax, "c")
-    save_figure(fig, output_dir, "Extended_Data_Figure1c")
+    save_figure(fig, output_dir, "Supplementary_Figure_S1c")
 
 
 def plot_ed1d_f(source: Path, output_dir: Path) -> None:
@@ -220,7 +218,7 @@ def plot_ed1d_f(source: Path, output_dir: Path) -> None:
     colorbar.set_label("Unpaired probability")
     panel_label(axis_f, "f")
 
-    save_figure(fig, output_dir, "Extended_Data_Figure1d_f")
+    save_figure(fig, output_dir, "Supplementary_Figure_S1d_f")
 
 
 ED2_BLUE_CMAP = LinearSegmentedColormap.from_list(
@@ -439,233 +437,23 @@ def plot_ed2(source: Path, output_dir: Path) -> None:
 
     fig.text(0.012, 0.995, "a", ha="left", va="top", fontsize=9, fontweight="bold")
     fig.text(0.012, 0.505, "b", ha="left", va="top", fontsize=9, fontweight="bold")
-    save_figure(fig, output_dir, "Extended_Data_Figure2")
-
-
-ED6_SAMPLE_ORDER = [
-    f"{condition}_{day}d_{replicate}"
-    for day in (5, 9, 13, 15)
-    for condition in ("WT", "M")
-    for replicate in (1, 2, 3)
-]
-
-ED6_ANNOTATION_COLORS = {
-    "PFAM": "#2C948D",
-    "eggNOG": "#427796",
-    "NR": "#EB9D5F",
-    "Swissprot": "#DE6C52",
-    "KEGG": "#897F7D",
-    "GO": "#64498C",
-}
-
-
-def plot_ed6(source: Path, output_dir: Path) -> None:
-    pca = pd.read_excel(source, sheet_name="ED_Fig.6a")
-    corr = pd.read_excel(source, sheet_name="ED_Fig.6b", index_col=0)
-    missing_samples = sorted(set(ED6_SAMPLE_ORDER) - set(corr.index) | set(ED6_SAMPLE_ORDER) - set(corr.columns))
-    if missing_samples:
-        raise ValueError(f"Missing ED Fig. 6b samples: {missing_samples}")
-    corr = corr.reindex(index=ED6_SAMPLE_ORDER, columns=ED6_SAMPLE_ORDER)
-    annot = pd.read_excel(source, sheet_name="ED_Fig.6c")
-    support = pd.read_excel(source, sheet_name="ED_Fig.6d")
-    intersections = pd.read_excel(source, sheet_name="ED_Fig.6e")
-
-    fig = plt.figure(figsize=(7.2, 7.2), constrained_layout=True)
-    grid = fig.add_gridspec(3, 2, height_ratios=[1, 1, 1.25])
-
-    ax = fig.add_subplot(grid[0, 0])
-    palette = plt.cm.tab10(np.linspace(0, 1, pca.condition.nunique()))
-    for color, (condition, sub) in zip(palette, pca.groupby("condition")):
-        ax.scatter(sub.PC1, sub.PC2, s=18, color=color, label=condition)
-    ax.axhline(0, color="#D0D0D0", lw=0.6)
-    ax.axvline(0, color="#D0D0D0", lw=0.6)
-    ax.set(xlabel="PC1 (66%)", ylabel="PC2 (20%)")
-    ax.legend(ncol=2, bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=5.5)
-    panel_label(ax, "a")
-
-    ax = fig.add_subplot(grid[0, 1])
-    image = ax.imshow(corr.to_numpy(dtype=float), vmin=0.9, vmax=1, cmap="viridis", interpolation="nearest")
-    ax.set_xticks(np.arange(len(corr.columns)), corr.columns, rotation=90, fontsize=4.2)
-    ax.set_yticks(np.arange(len(corr.index)), corr.index, fontsize=4.2)
-    colorbar = fig.colorbar(image, ax=ax, fraction=0.03, pad=0.02)
-    colorbar.ax.set_title("r value", fontsize=6.5, pad=4)
-    ax.set_xlabel("Pearson correlation", labelpad=5)
-    panel_label(ax, "b")
-
-    ax = fig.add_subplot(grid[1, 0])
-    annot = annot.sort_values("percent")
-    bar_colors = [ED6_ANNOTATION_COLORS[source] for source in annot.source]
-    ax.barh(annot.source, annot.percent, color=bar_colors)
-    for y, (_, row) in enumerate(annot.iterrows()):
-        ax.text(row.percent + 0.3, y, f"{int(row['count']):,} ({row.percent:.1f}%)", va="center", fontsize=5.5)
-    ax.set_xlabel("Genes with annotation (%)")
-    panel_label(ax, "c")
-
-    ax = fig.add_subplot(grid[1, 1])
-    ax.bar(support.annotation_source_count.astype(str), support.percent, color="#659B87")
-    for i, row in support.iterrows():
-        ax.text(i, row.percent + 1.2, f"{int(row['count']):,}\n{row.percent:.1f}%", ha="center", fontsize=5.2)
-    ax.set(xlabel="Number of annotation sources per gene", ylabel="Genes (%)")
-    panel_label(ax, "d")
-
-    ax = fig.add_subplot(grid[2, :])
-    x = np.arange(len(intersections))
-    ax.bar(x, intersections["Gene count"], color=COLORS["navy"])
-    ax.set_ylabel("Genes")
-    ax.set_xticks(x, [str(v) for v in intersections["Gene count"]], rotation=90, fontsize=5)
-    ax2 = ax.inset_axes([0, -0.55, 1, 0.42])
-    membership = intersections[["5 d", "9 d", "13 d", "15 d"]].to_numpy(dtype=int).T
-    for col in range(membership.shape[1]):
-        present = np.where(membership[:, col] == 1)[0]
-        if len(present):
-            ax2.plot([col, col], [present.min(), present.max()], color=COLORS["dark"], lw=0.7)
-        ax2.scatter(np.full(4, col), np.arange(4), s=8, facecolors=np.where(membership[:, col] == 1, COLORS["dark"], "white"), edgecolors="#B0B0B0", linewidths=0.4)
-    ax2.set(yticks=np.arange(4), yticklabels=["5 d", "9 d", "13 d", "15 d"], xticks=[], xlim=(-0.5, len(x) - 0.5), ylim=(-0.5, 3.5))
-    ax2.spines[["top", "right", "bottom", "left"]].set_visible(False)
-    panel_label(ax, "e")
-    save_figure(fig, output_dir, "Extended_Data_Figure6")
-
-
-def half_circle_marker(side: str) -> MplPath:
-    if side == "left":
-        angles = np.linspace(np.pi / 2, 3 * np.pi / 2, 60)
-    elif side == "right":
-        angles = np.linspace(-np.pi / 2, np.pi / 2, 60)
-    else:
-        raise ValueError("side must be 'left' or 'right'")
-    vertices = np.column_stack([np.cos(angles), np.sin(angles)])
-    vertices = np.vstack([[0.0, 0.0], vertices, [0.0, 0.0]])
-    codes = [MplPath.MOVETO] + [MplPath.LINETO] * len(angles) + [MplPath.CLOSEPOLY]
-    return MplPath(vertices, codes)
-
-
-def fdr_alpha(value: float) -> float:
-    if value <= 0.001:
-        return 1.0
-    if value <= 0.01:
-        return 0.72
-    if value <= 0.05:
-        return 0.45
-    return 0.16
-
-
-def plot_ed7(source: Path, output_dir: Path) -> None:
-    data = pd.read_excel(source, sheet_name="ED_Fig.7")
-    times = ["5d", "9d", "13d", "15d"]
-    up_color = "#CB493D"
-    down_color = "#2E69A5"
-    size_scale = 14.0
-    left_marker = half_circle_marker("left")
-    right_marker = half_circle_marker("right")
-
-    module_labels = {
-        "Protein turnover": "Protein\nturnover",
-        "Protein folding and translation": "Protein folding\nand translation",
-        "Lipid activation and synthase": "Lipid activation\nand synthase",
-        "Fatty-acid biosynthesis": "Fatty-acid\nbiosynthesis",
-    }
-    row_metadata = (
-        data[["order", "module", "displayLabel"]]
-        .drop_duplicates()
-        .sort_values("order")
-    )
-    display_rows = [
-        (int(row.order), str(row.displayLabel), module_labels[str(row.module)])
-        for row in row_metadata.itertuples(index=False)
-    ]
-    if len(display_rows) != 20 or set(data.groupby("order").size()) != {4}:
-        raise ValueError("ED_Fig.7 must contain 20 GO terms with four time points per term.")
-
-    fig = plt.figure(figsize=(7.2, 6.5), facecolor="white")
-    ax = fig.add_axes([0.53, 0.15, 0.20, 0.80])
-    legend_ax = fig.add_axes([0.76, 0.20, 0.22, 0.73])
-
-    for xi in range(4):
-        ax.axvline(xi, color="#D9D9D9", lw=0.45, zorder=0)
-
-    for yi, (source_order, _, _) in enumerate(display_rows):
-        sub = data[data["order"] == source_order].set_index("timepoint")
-        for xi, time in enumerate(times):
-            if time not in sub.index:
-                continue
-            row = sub.loc[time]
-            alpha = fdr_alpha(float(row.FDR))
-            up = float(row.up)
-            down = float(row.down)
-            if up > 0:
-                ax.scatter(xi, yi, s=up * size_scale, marker=left_marker, color=up_color, alpha=alpha, linewidths=0, zorder=3)
-            if down > 0:
-                ax.scatter(xi, yi, s=down * size_scale, marker=right_marker, color=down_color, alpha=alpha, linewidths=0, zorder=3)
-
-    labels = [row[1] for row in display_rows]
-    ax.set_xlim(-0.45, 3.45)
-    ax.set_ylim(len(display_rows) - 0.35, -0.65)
-    ax.set_xticks(np.arange(4), ["5", "9", "13", "15"])
-    ax.set_yticks(np.arange(len(labels)), labels)
-    ax.set_xlabel("Time (d)", labelpad=3)
-    ax.tick_params(axis="x", length=3, width=0.7, pad=2, labelsize=7.5)
-    ax.tick_params(axis="y", length=0, pad=7, labelsize=7.2)
-    for tick in ax.get_yticklabels():
-        tick.set_horizontalalignment("right")
-    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
-
-    axes_box = ax.get_position()
-    group_centres = [2, 7, 12, 17]
-    group_labels = [
-        "Protein\nturnover",
-        "Protein folding\nand translation",
-        "Lipid activation\nand synthase",
-        "Fatty-acid\nbiosynthesis",
-    ]
-    for centre, label in zip(group_centres, group_labels):
-        fy = axes_box.y1 - (centre + 0.5) / len(display_rows) * axes_box.height
-        fig.text(0.047, fy, label, rotation=90, ha="center", va="center", fontsize=7.5, fontweight="bold", linespacing=1.05)
-    fig.add_artist(Line2D([0.006, 0.006], [axes_box.y0, axes_box.y1], transform=fig.transFigure, color="#B9D9D5", lw=3.0))
-    for boundary in (5, 10, 15):
-        fy = axes_box.y1 - boundary / len(display_rows) * axes_box.height
-        fig.add_artist(Line2D([0.006, axes_box.x1], [fy, fy], transform=fig.transFigure, color="#D9D9D9", lw=0.45, zorder=0))
-
-    legend_ax.set_xlim(0, 1)
-    legend_ax.set_ylim(0, 1)
-    legend_ax.axis("off")
-    legend_ax.text(0.00, 0.98, "Direction", ha="left", va="top", fontsize=8, fontweight="bold")
-    legend_ax.scatter(0.08, 0.91, s=9 * size_scale, marker=left_marker, color=up_color, linewidths=0)
-    legend_ax.scatter(0.08, 0.91, s=9 * size_scale, marker=right_marker, color=down_color, linewidths=0)
-    legend_ax.text(0.18, 0.91, "Up / Down", ha="left", va="center", fontsize=7.5)
-
-    legend_ax.text(0.00, 0.81, "Transparency (FDR)", ha="left", va="top", fontsize=8, fontweight="bold")
-    fdr_items = [("≤ 0.001", 1.0), ("0.001–0.01", 0.72), ("0.01–0.05", 0.45), ("> 0.05", 0.16)]
-    for index, (label, alpha) in enumerate(fdr_items):
-        y = 0.74 - index * 0.075
-        legend_ax.scatter(0.08, y, s=32, color="#5E6B75", alpha=alpha, linewidths=0)
-        legend_ax.text(0.18, y, label, ha="left", va="center", fontsize=7.2)
-
-    legend_ax.text(0.00, 0.43, "DEG count", ha="left", va="top", fontsize=8, fontweight="bold")
-    for index, count in enumerate((5, 10, 15)):
-        y = 0.35 - index * 0.105
-        legend_ax.scatter(0.08, y, s=count * size_scale, facecolors="none", edgecolors="#303030", linewidths=0.75)
-        legend_ax.text(0.18, y, str(count), ha="left", va="center", fontsize=7.2)
-
-    fig.text(0.49, 0.045, "GO enrichment terms linked to growth in the mutant strain", ha="center", va="center", fontsize=8)
-    save_figure(fig, output_dir, "Extended_Data_Figure7")
+    save_figure(fig, output_dir, "Supplementary_Figure_S2")
 
 
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
-    ed1 = source_dir / "Source_data_Extended_Data_Fig1.xlsx"
-    ed2 = source_dir / "Source_data_Extended_Data_Fig2.xlsx"
-    ed6 = source_dir / "Source_data_Extended_Data_Fig6.xlsx"
-    ed7 = source_dir / "Source_data_Extended_Data_Fig7.xlsx"
-    plot_ed1b(ed1, output_dir)
-    plot_ed1c(ed1, output_dir)
-    plot_ed1d_f(ed1, output_dir)
-    plot_ed2(ed2, output_dir)
-    plot_ed6(ed6, output_dir)
-    plot_ed7(ed7, output_dir)
+    supplementary_1 = source_dir / "Source_Data_Supplementary_Figure_S1.xlsx"
+    supplementary_2 = source_dir / "Source_Data_Supplementary_Figure_S2.xlsx"
+    plot_ed1b(supplementary_1, output_dir)
+    plot_ed1c(supplementary_1, output_dir)
+    plot_ed1d_f(supplementary_1, output_dir)
+    plot_ed2(supplementary_2, output_dir)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Recreate data-driven panels for Supplementary Figures S1 and S2."
+    )
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

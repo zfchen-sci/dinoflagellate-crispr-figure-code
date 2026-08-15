@@ -11,15 +11,12 @@ import pandas as pd
 
 
 REQUIRED_SOURCE_FILES = (
-    "Source_data_fig1.xlsx",
-    "Source_data_fig2.xlsx",
-    "Source_data_fig3.xlsx",
-    "Source_data_fig4.xlsx",
-    "Source_data_fig5.xlsx",
-    "Source_data_Extended_Data_Fig1.xlsx",
-    "Source_data_Extended_Data_Fig2.xlsx",
-    "Source_data_Extended_Data_Fig6.xlsx",
-    "Source_data_Extended_Data_Fig7.xlsx",
+    "Source_Data_Figure_1.xlsx",
+    "Source_Data_Figure_2.xlsx",
+    "Source_Data_Figure_3.xlsx",
+    "Source_Data_Figure_4.xlsx",
+    "Source_Data_Supplementary_Figure_S1.xlsx",
+    "Source_Data_Supplementary_Figure_S2.xlsx",
 )
 
 EXPECTED_FIGURE_STEMS = (
@@ -27,20 +24,16 @@ EXPECTED_FIGURE_STEMS = (
     "Figure2_data_panels",
     "Figure3_data_panels",
     "Figure4_data_panels",
-    "Figure5_data_panels",
-    "Extended_Data_Figure1b",
-    "Extended_Data_Figure1c",
-    "Extended_Data_Figure1d_f",
-    "Extended_Data_Figure2",
-    "Extended_Data_Figure6",
-    "Extended_Data_Figure7",
+    "Supplementary_Figure_S1b",
+    "Supplementary_Figure_S1c",
+    "Supplementary_Figure_S1d_f",
+    "Supplementary_Figure_S2",
 )
 
 RECALCULATED_PANELS = {
     2: {"d", "f"},
     3: {"f", "g", "h", "i"},
     4: {"d", "e"},
-    5: {"b", "c"},
 }
 
 
@@ -62,7 +55,7 @@ def _assert_close(actual: object, expected: object, label: str) -> None:
 
 
 def _load_expected_statistics(source_dir: Path, figure_number: int) -> pd.DataFrame:
-    source = source_dir / f"Source_data_fig{figure_number}.xlsx"
+    source = source_dir / f"Source_Data_Figure_{figure_number}.xlsx"
     expected = pd.read_excel(source, sheet_name="Statistics", header=1)
     expected = expected[expected["Panel"].notna()].reset_index(drop=True)
     return expected
@@ -75,7 +68,7 @@ def validate_statistics(source_dir: Path, results_dir: Path) -> int:
     tests = result.get("tests", [])
 
     expected_total = 0
-    for figure_number in range(2, 6):
+    for figure_number in range(2, 5):
         figure = f"Fig. {figure_number}"
         expected = _load_expected_statistics(source_dir, figure_number)
         actual = [row for row in tests if row["figure"] == figure]

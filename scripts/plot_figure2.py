@@ -47,7 +47,7 @@ def grouped_recovery_panel(
 
 def plot(source_dir: Path, output_dir: Path) -> None:
     configure_style()
-    source = source_dir / "Source_data_fig2.xlsx"
+    source = source_dir / "Source_Data_Figure_2.xlsx"
     tip = pd.read_excel(source, sheet_name="Fig.2d")
     uvrd = pd.read_excel(source, sheet_name="Fig.2f")
 

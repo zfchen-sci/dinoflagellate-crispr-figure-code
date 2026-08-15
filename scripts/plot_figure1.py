@@ -33,7 +33,7 @@ def plot(source_dir: Path, output_dir: Path) -> None:
     would not be a faithful substitute.
     """
     configure_style()
-    source = source_dir / "Source_data_fig1.xlsx"
+    source = source_dir / "Source_Data_Figure_1.xlsx"
     composition = pd.read_excel(source, sheet_name="Fig.1a-b_base_comp", header=2)
     pairs = pd.read_excel(source, sheet_name="Fig.1f_pair_prob")
 

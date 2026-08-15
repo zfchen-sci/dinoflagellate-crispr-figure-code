@@ -109,7 +109,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     summaries: list[dict] = []
     checks: list[dict] = []
 
-    f2 = source_dir / "Source_data_fig2.xlsx"
+    f2 = source_dir / "Source_Data_Figure_2.xlsx"
     d2 = pd.read_excel(f2, sheet_name="Fig.2d")
     for outcome in ("germination_rate", "viability_rate"):
         tests.append(
@@ -145,7 +145,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             )
         )
 
-    f3 = source_dir / "Source_data_fig3.xlsx"
+    f3 = source_dir / "Source_Data_Figure_3.xlsx"
     inj = parse_injection_data(f3)
     b = inj[(inj.crRNA == "Site2") & (inj["Injection strategy"] == "UvrD+Nuclei")]
     groups = [b.loc[b["RNP concentration (nM)"] == dose, "per_viable"].dropna() for dose in (5, 30, 1200)]
@@ -307,7 +307,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
                     ),
                 }
             )
-    f4 = source_dir / "Source_data_fig4.xlsx"
+    f4 = source_dir / "Source_Data_Figure_4.xlsx"
     q = pd.read_excel(f4, sheet_name="Fig.4d", header=2)
     qbio = q.groupby(["Samples", "Days", "Cell density (cells/ml)"], as_index=False).Ct.mean()
     qbio["Strain"] = infer_fig4_qpcr_strain(qbio["Samples"], WT, EDITED)
@@ -366,51 +366,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
     for i in fig3e_indices:
         tests[i]["notes"] += " Holm family: the eight time-point comparisons in Fig. 4e."
 
-    f5 = source_dir / "Source_data_fig5.xlsx"
-    sxta = pd.read_excel(f5, sheet_name="Fig.5b")
-    fig4b_indices = []
-    for day, sub in sxta.groupby("day"):
-        fig4b_indices.append(len(tests))
-        tests.append(
-            t_row(
-                "Fig. 5",
-                "b",
-                f"WT vs edited at day {day}",
-                "sxtA expression (FPKM)",
-                sub.loc[sub.group == WT, "fpkm"],
-                sub.loc[sub.group == EDITED, "fpkm"],
-                "Two-tailed Welch t-test",
-                False,
-                f5.name,
-                "Fig.5b",
-            )
-        )
-    add_holm(tests, fig4b_indices)
-
-    pst = pd.read_excel(f5, sheet_name="Fig.5c")
-    fig4c_indices = []
-    for gene, sub in pst.groupby("pst_gene", sort=False):
-        fig4c_indices.append(len(tests))
-        tests.append(
-            t_row(
-                "Fig. 5",
-                "c",
-                f"WT vs edited for {gene}",
-                "FPKM pooled across four sampled days",
-                sub.loc[sub.group == WT, "fpkm"],
-                sub.loc[sub.group == EDITED, "fpkm"],
-                "Two-tailed Welch t-test",
-                False,
-                f5.name,
-                "Fig.5c",
-            )
-        )
-    add_holm(tests, fig4c_indices)
-
-    gene_p: list[dict] = []
-
-    fed1 = source_dir / "Source_data_Extended_Data_Fig1.xlsx"
-    fed7 = source_dir / "Source_data_Extended_Data_Fig7.xlsx"
+    fed1 = source_dir / "Source_Data_Supplementary_Figure_S1.xlsx"
     ed1c = pd.read_excel(fed1, sheet_name="ED_Fig.1c", header=2)
     ed1c_bio = ed1c.groupby(["Number of cells", "Samples"], as_index=False)["Ct Value"].mean()
     ed1c_bio["copy_number_per_cell"] = (
@@ -420,7 +376,7 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         mean, sd, n = mean_sd(sub.copy_number_per_cell)
         summaries.append(
             {
-                "figure": "Extended Data Fig. 1",
+                "figure": "Supplementary Fig. S1",
                 "panel": "c",
                 "group": f"{cells:g} cells",
                 "outcome": "sxtA4 copy number per cell",
@@ -433,41 +389,32 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
             }
         )
 
-    ed7 = pd.read_excel(fed7, sheet_name="ED_Fig.7")
-    ed7_rows = ed7[
-        ["module", "GO.ID", "term", "timepoint", "up", "down", "DEG", "FDR", "FDR_bin"]
-    ].to_dict(orient="records")
-
     panel_map = [
         ("Fig. 1", "a–c,e,f", "Fig.1a-b_base_comp; Fig.1a-b_SNPs; Fig.1c_sequences; Fig.1e_metrics; Fig.1f_pair_prob", "plot_figure1.py", "Computational predictions or descriptive source data"),
         ("Fig. 2", "d,f", "Fig.2d; Fig.2f", "plot_figure2.py", "Welch t-tests"),
         ("Fig. 3", "b–e", "Fig.3b-g_raw; Fig.3b-e", "plot_figure3.py", "Descriptive; no inferential tests"),
         ("Fig. 3", "f,g", "Fig.3b-g_raw; Fig.3f; Fig.3g", "plot_figure3.py", "ANOVA/Tukey and Welch t-tests"),
         ("Fig. 3", "h–j", "Fig.3h-j", "plot_figure3.py", "Welch t-test; Welch ANOVA/Games-Howell; descriptive composition"),
-        ("Fig. 3", "k,l", "Fig.3k; Fig.3l", "plot_figure3.py", "Descriptive"),
+        ("Fig. 3", "k,l", "Fig.3k; Fig.3l", "plot_figure3.py", "Descriptive repair-pathway and microhomology summaries"),
         ("Fig. 4", "b,c", "Fig.4b; Fig.4c", "plot_figure4.py", "Descriptive; no inferential comparisons"),
         ("Fig. 4", "d", "Fig.4d", "plot_figure4.py", "Log10-scale Welch tests with Holm correction"),
         ("Fig. 4", "e", "Fig.4e", "plot_figure4.py", "Welch tests with Holm correction"),
-        ("Fig. 5", "a", "Fig.5a", "plot_figure5.py", "Descriptive"),
-        ("Fig. 5", "b", "Fig.5b", "plot_figure5.py", "Welch tests with Holm correction"),
-        ("Fig. 5", "c", "Fig.5c", "plot_figure5.py", "Welch tests with Holm correction"),
-        ("Fig. 5", "d", "Fig.5d", "plot_figure5.py", "DESeq2 gene-level tests"),
-        ("Fig. 5", "e", "Fig.5e", "plot_figure5.py", "Descriptive; no additional hypothesis test"),
-        ("Extended Data Fig. 1", "b–f", "ED_Fig.1b; ED_Fig.1c; ED_Fig.1d; ED_Fig.1e; ED_Fig.1f", "plot_extended_data.py", "Descriptive or computational predictions"),
-        ("Extended Data Fig. 2", "a,b", "ED_Fig.2a; ED_Fig.2b", "plot_extended_data.py", "Descriptive heat maps"),
-        ("Extended Data Fig. 6", "a–e", "ED_Fig.6a–e", "plot_extended_data.py", "PCA/Pearson/descriptive"),
-        ("Extended Data Fig. 7", "", "ED_Fig.7", "plot_extended_data.py", "GO enrichment FDR"),
+        ("Supplementary Fig. S1", "b–f", "ED_Fig.1b; ED_Fig.1c; ED_Fig.1d; ED_Fig.1e; ED_Fig.1f", "plot_extended_data.py", "Descriptive or computational predictions"),
+        ("Supplementary Fig. S2", "a,b", "ED_Fig.2a; ED_Fig.2b", "plot_extended_data.py", "Descriptive heat maps"),
     ]
+    source_files = {
+        "Fig. 1": "Source_Data_Figure_1.xlsx",
+        "Fig. 2": "Source_Data_Figure_2.xlsx",
+        "Fig. 3": "Source_Data_Figure_3.xlsx",
+        "Fig. 4": "Source_Data_Figure_4.xlsx",
+        "Supplementary Fig. S1": "Source_Data_Supplementary_Figure_S1.xlsx",
+        "Supplementary Fig. S2": "Source_Data_Supplementary_Figure_S2.xlsx",
+    }
     panel_rows = [
         {
             "figure": fig,
             "panel": panel,
-            "source_file": {
-                "Extended Data Fig. 1": "Source_data_Extended_Data_Fig1.xlsx",
-                "Extended Data Fig. 2": "Source_data_Extended_Data_Fig2.xlsx",
-                "Extended Data Fig. 6": "Source_data_Extended_Data_Fig6.xlsx",
-                "Extended Data Fig. 7": "Source_data_Extended_Data_Fig7.xlsx",
-            }.get(fig, f"Source_data_fig{fig.split('.')[1].strip()}.xlsx"),
+            "source_file": source_files[fig],
             "source_sheet": sheet,
             "script": script,
             "statistics": stat,
@@ -479,8 +426,6 @@ def calculate_statistics(source_dir: Path) -> dict[str, list[dict]]:
         "panel_map": panel_rows,
         "tests": tests,
         "summaries": summaries,
-        "fig5e_gene_p": gene_p,
-        "ed7_go_fdr": ed7_rows,
         "checks": checks,
     }
 
@@ -590,7 +535,7 @@ def write_results(source_dir: Path, output_dir: Path) -> tuple[Path, Path]:
     excel_path = output_dir / "statistics_results.xlsx"
     json_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     write_excel_results(result, excel_path)
-    for name in ("checks.csv", "ed7_go_fdr.csv", "fig4e_gene_p.csv", "fig5e_gene_p.csv", "panel_map.csv", "summaries.csv", "tests.csv"):
+    for name in ("checks.csv", "panel_map.csv", "summaries.csv", "tests.csv"):
         path = output_dir / name
         if path.exists():
             path.unlink()
